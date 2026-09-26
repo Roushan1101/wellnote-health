@@ -1,0 +1,14 @@
+node_modules/
+.npm-cache/
+dist/
+artifacts/
+test-results/
+playwright-report/
+blob-report/
+.env
+.env.*
+*.pdf
+*.log
+*.personal.json
+wellnote-personal-data.json
+.DS_Store
