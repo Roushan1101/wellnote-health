@@ -1,8 +1,8 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import { guidance as demoGuidance } from './data/guidance'
 import { demoDataset, parseDataset, validateDataset } from './lib/dataset'
-import { needsAttention, readingStatus } from './lib/results'
-import type { Dataset, Guidance, Marker } from './types'
+import { defaultPair, projectDataset } from './lib/history'
+import { buildGuidance } from './lib/guidance'
+import type { Dataset, Guidance, HistoryReport, Marker, PairReports, Person } from './types'
 
 export const storageKey = () => `wellnote-local-dataset:v1:${window.location.pathname}`
 
@@ -12,11 +12,19 @@ interface DatasetState {
   saved: boolean
   revision: number
   storageWarning: string
+  pair: [string, string]
 }
 
-interface DatasetContextValue extends DatasetState, Dataset {
+interface DatasetContextValue extends DatasetState {
+  person: Person
+  reports: PairReports
+  allReports: HistoryReport[]
+  markers: Marker[]
+  unavailable: number
+  historical: boolean
   guidance: Guidance[]
-  findMarker: (id: string) => Marker
+  findMarker: (id: string) => Marker | undefined
+  selectPair: (first: string, second: string) => void
   loadDataset: (dataset: Dataset, remember: boolean) => void
   clearData: () => void
 }
@@ -24,10 +32,13 @@ interface DatasetContextValue extends DatasetState, Dataset {
 const DatasetContext = createContext<DatasetContextValue | null>(null)
 
 function initialState(): DatasetState {
-  const state = { dataset: demoDataset, isPersonal: false, saved: false, revision: 0, storageWarning: '' }
+  const state = { dataset: demoDataset, isPersonal: false, saved: false, revision: 0, storageWarning: '', pair: defaultPair(demoDataset) }
   try {
     const saved = localStorage.getItem(storageKey())
-    if (saved) return { ...state, dataset: parseDataset(saved), isPersonal: true, saved: true }
+    if (saved) {
+      const dataset = parseDataset(saved)
+      return { ...state, dataset, pair: defaultPair(dataset), isPersonal: true, saved: true }
+    }
   } catch {
     state.storageWarning = 'Saved browser data could not be loaded. Demo shown instead. Clear site storage if this persists.'
   }
@@ -37,26 +48,16 @@ function initialState(): DatasetState {
 export function DatasetProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DatasetState>(initialState)
   const value = useMemo<DatasetContextValue>(() => {
-    const findMarker = (id: string) => {
-      const marker = state.dataset.markers.find((item) => item.id === id)
-      if (!marker) throw new Error('The loaded dataset is missing a required measurement.')
-      return marker
-    }
-    const guidance = state.isPersonal
-      ? demoGuidance.flatMap((plan) => {
-        const relevant = state.dataset.markers.filter((marker) => plan.markerIds.includes(marker.id) && needsAttention(readingStatus(marker.latest)))
-        if (!relevant.length) return []
-        return [{
-          ...plan,
-          eyebrow: 'GENERAL EDUCATION / IMPORTED RESULTS',
-          markerIds: relevant.map((marker) => marker.id),
-          summary: `${relevant.map((marker) => `${marker.name}: ${marker.latest!.raw}${marker.unit ? ` ${marker.unit}` : ''} (${readingStatus(marker.latest)})`).join('; ')}. Flags use each imported reference. They do not establish a diagnosis or treatment need.`,
-          caution: 'General education only. Do not start, stop or dose medication or supplements from app flags. Discuss actual concerns with a qualified clinician.',
-        }]
-      })
-      : demoGuidance
+    const projected = projectDataset(state.dataset, ...state.pair)
+    const findMarker = (id: string) => projected.markers.find((item) => item.id === id)
+    const historical = projected.reports.latest.id !== state.dataset.reports.at(-1)!.id
+    const guidance = buildGuidance(projected.markers, projected.reports.latest, historical)
     return {
-      ...state, ...state.dataset, guidance, findMarker,
+      ...state, ...projected, person: state.dataset.person, allReports: state.dataset.reports, historical, guidance, findMarker,
+      selectPair(first, second) {
+        const { pair } = projectDataset(state.dataset, first, second)
+        setState((current) => ({ ...current, pair }))
+      },
       loadDataset(dataset, remember) {
         const validated = validateDataset(dataset)
         try {
@@ -65,12 +66,12 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
         } catch {
           if (remember || state.saved) throw new Error('Browser storage could not be updated. Disable “Remember” for memory-only use, or clear this site’s storage in browser settings first.')
         }
-        setState((current) => ({ dataset: validated, isPersonal: true, saved: remember, revision: current.revision + 1, storageWarning: '' }))
+        setState((current) => ({ dataset: validated, pair: defaultPair(validated), isPersonal: true, saved: remember, revision: current.revision + 1, storageWarning: '' }))
       },
       clearData() {
         let warning = ''
         try { localStorage.removeItem(storageKey()) } catch { warning = 'Memory cleared, but browser storage could not be removed. Clear this site’s storage in browser settings before reloading.' }
-        setState((current) => ({ dataset: demoDataset, isPersonal: false, saved: false, revision: current.revision + 1, storageWarning: warning }))
+        setState((current) => ({ dataset: demoDataset, pair: defaultPair(demoDataset), isPersonal: false, saved: false, revision: current.revision + 1, storageWarning: warning }))
       },
     }
   }, [state])

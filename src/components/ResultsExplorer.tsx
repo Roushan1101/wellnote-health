@@ -4,7 +4,7 @@ import { groups, groupLabel } from '../data/reports'
 import { useDataset } from '../DatasetContext'
 import {
   defaultFilters, getChange, getTrend, rangeChanged, readingStatus, reportForMode,
-  trendLabels,
+  readingUnit, trendLabels,
 } from '../lib/results'
 import type { Filters, Marker, SortOrder, StatusFilter, TrendFilter, ViewMode } from '../types'
 import { GroupIcon, StatusBadge } from './ui'
@@ -75,9 +75,9 @@ export function ResultsTable({
         <thead>
           <tr>
             <th scope="col">BIOMARKER</th>
-            {shownReports.map((key) => <th scope="col" key={key}><span className={`column-date ${key}`}>{reports[key].shortDate.toUpperCase()}</span></th>)}
+            {shownReports.map((key) => <th scope="col" key={key}><span className={`column-date ${key}`}>{reports[key].collectionDate ? 'COLLECTED ' : 'LEGACY DATE '}{reports[key].shortDate.toUpperCase()}</span><br /><small>{reports[key].id}</small></th>)}
             {mode === 'compare' && <th scope="col">CHANGE</th>}
-            <th scope="col">{mode === 'compare' ? 'LATEST STATUS' : 'STATUS'}</th>
+            <th scope="col">{mode === 'compare' ? 'LATER STATUS' : 'STATUS'}</th>
             <th scope="col">{isPersonal ? 'IMPORTED' : 'ILLUSTRATIVE'} REFERENCE</th>
             <th scope="col"><span className="sr-only">View details</span></th>
           </tr>
@@ -95,7 +95,7 @@ export function ResultsTable({
                 const reading = marker[key]
                 return <td key={key} className={key === 'latest' ? 'latest-value-cell' : 'earlier-value-cell'}>
                   <span className="reading-value">{reading?.raw ?? '\u2014'}{reading && <i className={`value-indicator indicator-${readingStatus(reading)}`} aria-hidden="true" />}</span>
-                  <small>{reading ? marker.unit : 'Not reported'}</small>
+                  <small>{reading ? readingUnit(marker, key) : 'Not reported'}</small>
                 </td>
               })}
               {mode === 'compare' && <td><ChangeCell marker={marker} /></td>}
@@ -170,7 +170,7 @@ export function ResultsExplorer({
           ))}
         </div>
         <div className="results-meta">
-          <span role="status" aria-live="polite"><strong>{filtered.length}</strong> of {allMarkers.length} markers{activeCount > 0 ? ' match your filters' : ' across your two reports'}</span>
+          <span role="status" aria-live="polite"><strong>{filtered.length}</strong> of {allMarkers.length} markers{activeCount > 0 ? ' match your filters' : ' in the selected pair'}</span>
           <label className="sort-field"><ArrowDownUp size={13} aria-hidden="true" /><span className="sr-only">Sort biomarkers</span><select aria-label="Sort biomarkers" value={filters.sort} onChange={(event) => update({ sort: selectedOption(event.target.value, sortOptions) })}>{sortOptions.filter((option) => mode === 'compare' || option.value !== 'change').map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
         </div>
         {filtered.length > 0 ? <ResultsTable rows={visible} mode={mode} onSelect={onSelect} /> : (

@@ -1,10 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import { demoDataset } from '../src/lib/dataset'
-import type { Dataset } from '../src/types'
+import { markers } from '../src/data/markers'
+import { person, reports } from '../src/data/reports'
+import type { LegacyDataset } from '../src/types'
 
 // Entirely fictional fixtures; no personal source files are read by these tests.
-function importedFixture(): Dataset {
-  const data = structuredClone(demoDataset)
+function importedFixture(): LegacyDataset {
+  const data: LegacyDataset = structuredClone({ schemaVersion: 1, markers, person, reports })
   data.person = { name: 'Taylor Example (test fixture)', initials: 'TE', firstName: 'Taylor', latestReportedAge: 36, reportedSex: 'Not specified' }
   data.reports = {
     earlier: { id: 'example-a', date: '2021-03-09', label: '9 Mar 2021', shortDate: '9 Mar 2021', fullDate: '9 March 2021', year: 2021, pages: 12, filename: 'fictional-a.pdf', age: 35 },
@@ -48,8 +50,8 @@ test('memory-only import updates every view without requests or persistence', as
   await expect(page.locator('.priority-card')).not.toContainText('Below')
   expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('wellnote-local-dataset:')))).toEqual([])
   await page.getByRole('navigation').getByRole('button', { name: /Your next steps/ }).click()
-  await expect(page.locator('.guidance-card')).toHaveCount(1)
-  await expect(page.locator('.guidance-summary')).toContainText('GGT: 73 U/L (high)')
+  await expect(page.locator('.guidance-card')).toHaveCount(2)
+  await expect(page.locator('.guidance-liver .guidance-summary')).toContainText('GGT: 73 U/L (high)')
   await expect(page.locator('.guidance-list')).not.toContainText('fictional')
   await page.getByRole('navigation').getByRole('button', { name: /Source reports/ }).click()
   await expect(page.locator('.report-cards')).toContainText('9 March 2022')
@@ -88,9 +90,9 @@ test('loading without remember also removes a previously saved dataset', async (
 test('invalid input is actionable and preserves the current dataset', async ({ page }) => {
   await importJson(page, importedFixture())
   const invalid = importedFixture()
-  invalid.markers = invalid.markers.filter((marker) => marker.id !== 'iron')
+  invalid.markers.push(invalid.markers[0]!)
   await importJson(page, invalid)
-  await expect(page.getByRole('alert')).toContainText('missing required IDs: iron')
+  await expect(page.getByRole('alert')).toContainText('duplicate ID')
   await expect(page.locator('.profile-info')).toContainText('Taylor Example')
   await importJson(page, '{broken')
   await expect(page.getByRole('alert')).toContainText('invalid JSON')
@@ -125,6 +127,7 @@ test('no guidance plan is invented for unflagged or absent optional markers', as
   const data = importedFixture()
   data.markers = data.markers.filter((marker) => marker.id !== 'alt')
   data.markers.find((marker) => marker.id === 'ggt')!.latest!.raw = '33'
+  data.markers.find((marker) => marker.id === 'hba1c')!.latest!.raw = '5.1'
   await importJson(page, data)
   await page.getByRole('navigation').getByRole('button', { name: /Your next steps/ }).click()
   await expect(page.locator('.guidance-card')).toHaveCount(0)

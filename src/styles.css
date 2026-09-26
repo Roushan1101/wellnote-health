@@ -67,6 +67,14 @@
   .demo-banner span { color: #e5eed8; }
   .dialog-demo-note { padding: 12px; background: #eaf1e6; border-radius: 8px; margin-bottom: 16px; font-size: 12px; }
   .data-controls { padding: 20px; margin-bottom: 26px; display: grid; gap: 12px; }
+  .report-picker { padding: 20px; margin-bottom: 26px; display: grid; gap: 12px; min-width: 0; }
+  .report-picker p { font-size: 12px; }
+  .pair-selectors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .pair-selectors label { display: grid; gap: 6px; font-size: 12px; min-width: 0; }
+  .pair-selectors select { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); }
+  .sample-timeline { display: flex; gap: 8px; overflow-x: auto; padding: 5px; }
+  .sample-timeline .button { white-space: normal; min-width: 190px; max-width: 260px; text-align: left; flex-shrink: 0; }
+  .report-date strong { overflow-wrap: anywhere; }
   .data-controls h2 { font-size: 18px; margin-bottom: 5px; }
   .data-controls p { font-size: 12px; overflow-wrap: anywhere; }
   .remember-choice { display: flex; align-items: flex-start; gap: 9px; font-size: 12px; cursor: pointer; }
@@ -76,6 +84,7 @@
   .import-label:focus-within { outline: 3px solid #598d75; outline-offset: 4px; }
   .data-actions .button { white-space: normal; }
   .data-safety { color: #657466; }
+  .report-context-note, .guidance-reading-notes p { padding: 12px; margin: 12px 0; background: #fff4e6; border-left: 3px solid #b58a42; border-radius: 6px; font-size: 12px; overflow-wrap: anywhere; }
   .import-error { background: #fff0e7; color: #7a341c; border: 1px solid #e7b99e; border-radius: 8px; padding: 10px; }
   .sidebar { position: fixed; z-index: 20; top: var(--demo-banner-height); bottom: 0; left: 0; width: 224px; display: flex; flex-direction: column; padding: 28px 18px 18px; background: #f0f2eb; border-right: 1px solid #e0e4da; overflow-y: auto; }
   .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px; background: transparent; text-align: left; font-size: 27px; font-weight: 650; letter-spacing: -.065em; width: fit-content; }
@@ -138,7 +147,8 @@
   .report-date-pair, .report-strip-right { display: flex; align-items: center; gap: 17px; }
   .date-icon { width: 36px; height: 36px; border: 1px solid #e8ece2; background: #f8faf4; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: #77896d; margin-right: 2px; }
   .report-date small { display: block; font-size: 8px; color: #8e9588; font-weight: 600; letter-spacing: .12em; margin-bottom: 2px; }
-  .report-date strong { font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .report-date { min-width: 0; }
+  .report-date strong { font-size: 12px; font-weight: 500; white-space: normal; }
   .latest-date small { color: #648759; }
   .latest-date strong { color: var(--forest); font-weight: 600; }
   .date-arrow { color: #a8b09e; margin: 0 8px; }
@@ -550,6 +560,7 @@
     .guidance-columns { gap: 19px; }
   }
   @media (max-width: 720px) {
+    .pair-selectors { grid-template-columns: minmax(0, 1fr); }
     .page-heading { align-items: flex-start; flex-wrap: wrap; gap: 17px; }
     .page-heading h1 { font-size: 33px; }
     .page-heading p { font-size: 12px; max-width: 450px; line-height: 1.7; }

@@ -11,7 +11,9 @@ import { ReportsPage } from './components/ReportsPage'
 import { ResultsExplorer } from './components/ResultsExplorer'
 import { MedicalNote } from './components/ui'
 import { DataControls } from './components/DataControls'
+import { ReportPicker } from './components/ReportPicker'
 import { useDataset } from './DatasetContext'
+import { collectionLabel } from './lib/history'
 import { createCsv, defaultFilters, filterMarkers } from './lib/results'
 import type { Filters, Marker, PageId, StatusFilter, TrendFilter, ViewMode } from './types'
 
@@ -28,10 +30,10 @@ function pageFromHash(): PageId {
 }
 
 const pageContent: Record<PageId, { eyebrow: string; title: string; description: string }> = {
-  overview: { eyebrow: 'WELCOME TO A FICTIONAL HEALTH JOURNAL', title: 'Your health, in perspective.', description: 'Two invented checkups. Explore how a health journal could work.' },
+  overview: { eyebrow: 'WELCOME TO A FICTIONAL HEALTH JOURNAL', title: 'Your health, in perspective.', description: 'Explore fictional samples across collection dates. Choose any two to compare.' },
   biomarkers: { eyebrow: 'LESS JARGON. MORE UNDERSTANDING.', title: 'Meet your biomarkers.', description: 'Compare every measurement, find a pattern, and go a little deeper.' },
   guide: { eyebrow: 'INFORMED CONVERSATIONS. SMALL, MEANINGFUL STEPS.', title: 'A thoughtful way forward.', description: 'Food, everyday habits and the right questions for your clinician.' },
-  reports: { eyebrow: 'SYNTHETIC DATA. TRANSPARENT PROVENANCE.', title: 'The story starts here.', description: 'Two fictional report summaries. No patient records or original lab documents.' },
+  reports: { eyebrow: 'SYNTHETIC DATA. TRANSPARENT PROVENANCE.', title: 'The story starts here.', description: 'All fictional report summaries. No original lab documents are attached.' },
 }
 
 export default function App() {
@@ -40,7 +42,7 @@ export default function App() {
 }
 
 function Dashboard() {
-  const { markers, guidance, person, reports, isPersonal } = useDataset()
+  const { markers, guidance, person, reports, isPersonal, allReports, pair, selectPair } = useDataset()
   const daysBetweenReports = Math.round((Date.parse(reports.latest.date) - Date.parse(reports.earlier.date)) / 86_400_000)
   const [page, setPage] = useState<PageId>(pageFromHash)
   const [mode, setMode] = useState<ViewMode>('compare')
@@ -88,6 +90,21 @@ function Dashboard() {
     }))
   }
 
+  const changePair = (first: string, second: string) => {
+    selectPair(first, second)
+    setSelected(null)
+    setFilters({ ...defaultFilters, groups: [] })
+    setGuideTopic('all')
+    setMode('compare')
+  }
+
+  const snapshot = (id: string) => {
+    const partner = pair.includes(id) ? pair.find((key) => key !== id)! : allReports.find((report) => report.id !== id)!.id
+    changePair(id, partner)
+    setMode(allReports.findIndex((report) => report.id === id) < allReports.findIndex((report) => report.id === partner) ? 'earlier' : 'latest')
+    navigate('biomarkers')
+  }
+
   const focusFilter = (status: StatusFilter, trend: TrendFilter = 'all') => {
     if (trend !== 'all') setMode('compare')
     setFilters({ ...defaultFilters, groups: [], status, trend })
@@ -119,13 +136,12 @@ function Dashboard() {
           <button className="brand" onClick={() => navigate('overview')} aria-label="Wellnote home"><span className="brand-mark"><Activity size={24} strokeWidth={1.8} /></span><span>wellnote<span className="brand-period">.</span></span></button>
           <div className="sidebar-section-label">YOUR HEALTH SPACE</div>
           <nav className="main-navigation" aria-label="Main navigation">
-            {navigation.map((item) => <button key={item.id} className={`nav-item ${page === item.id ? 'active' : ''}`} aria-current={page === item.id ? 'page' : undefined} onClick={() => item.id === 'guide' ? showGuide() : navigate(item.id)}><item.icon size={19} strokeWidth={1.7} /><span>{item.label}</span>{item.id === 'guide' && <span className="nav-count">{guidance.length}</span>}{item.id === 'reports' && <span className="nav-count neutral-count">{Object.keys(reports).length}</span>}</button>)}
+            {navigation.map((item) => <button key={item.id} className={`nav-item ${page === item.id ? 'active' : ''}`} aria-current={page === item.id ? 'page' : undefined} onClick={() => item.id === 'guide' ? showGuide() : navigate(item.id)}><item.icon size={19} strokeWidth={1.7} /><span>{item.label}</span>{item.id === 'guide' && <span className="nav-count">{guidance.length}</span>}{item.id === 'reports' && <span className="nav-count neutral-count">{allReports.length}</span>}</button>)}
           </nav>
           <div className="sidebar-timeline">
             <div className="sidebar-section-label">YOUR REPORT TIMELINE</div>
-            <button onClick={() => { changeMode('latest'); navigate('biomarkers') }} className="timeline-entry current-entry"><span className="timeline-dot" /><span><strong>{reports.latest.shortDate}</strong><small>Latest {isPersonal ? 'import' : 'example'}</small></span><span className="tiny-new">{isPersonal ? 'LOCAL' : 'DEMO'}</span></button>
-            <button onClick={() => { changeMode('earlier'); navigate('biomarkers') }} className="timeline-entry"><span className="timeline-dot" /><span><strong>{reports.earlier.shortDate}</strong><small>{isPersonal ? 'Imported' : 'Fictional'} baseline</small></span></button>
-            <div className="timeline-caption">{daysBetweenReports} days of perspective</div>
+            {allReports.map((report) => <button key={report.id} onClick={() => snapshot(report.id)} className={`timeline-entry ${report.id === pair[1] ? 'current-entry' : ''}`}><span className="timeline-dot" /><span><strong>{report.shortDate}</strong><small>{report.collectionDate ? `Collected ${report.collectionTime ?? ''}` : 'Collection date not supplied; legacy report date'}</small><small>{report.laboratory ?? report.id}</small></span></button>)}
+            <div className="timeline-caption">{daysBetweenReports} days in selected pair</div>
           </div>
           <div className="sidebar-bottom">
             <div className="sidebar-quote"><Sparkles size={20} strokeWidth={1.5} /><p>Better understanding.<br />More intentional living.</p><span>ONE CHECK-IN AT A TIME.</span></div>
@@ -139,14 +155,15 @@ function Dashboard() {
           </header>
           <main id="main-content" tabIndex={-1}>
             <DataControls />
+            <ReportPicker onPair={changePair} onSnapshot={snapshot} />
             <section className="page-heading">
               <div><div className="eyebrow">{content.eyebrow}</div><h1>{content.title}</h1><p>{content.description}</p></div>
               <div className="header-actions"><button className="icon-button print-button" aria-label="Print filtered report" title="Print filtered report" onClick={() => window.print()}><Printer size={18} /></button><button className="button primary-button export-button" disabled={filtered.length === 0} onClick={exportCsv}><Download size={16} /><span>Export comparison</span></button></div>
             </section>
             {(page === 'overview' || page === 'biomarkers') && <>
               <section className="report-strip" aria-label="Report dates and viewing mode">
-                <div className="report-date-pair"><span className="date-icon"><CalendarDays size={19} /></span><div className="report-date"><small>BEFORE</small><strong>{reports.earlier.label}</strong></div><span className="date-arrow"><ArrowRight size={17} /></span><div className="report-date latest-date"><small>NOW</small><strong>{reports.latest.label}</strong></div></div>
-                <div className="report-strip-right"><button className="report-source-link" onClick={() => navigate('reports')}><FileText size={14} />2 source reports <ArrowUpRight size={12} /></button><div className="mode-switch" aria-label="Report view">{([{ key: 'compare', label: 'Compare' }, { key: 'latest', label: 'Latest' }, { key: 'earlier', label: 'Earlier' }] as const).map((item) => <button key={item.key} className={mode === item.key ? 'selected' : ''} aria-pressed={mode === item.key} onClick={() => changeMode(item.key)}>{item.label}</button>)}</div></div>
+                <div className="report-date-pair"><span className="date-icon"><CalendarDays size={19} /></span><div className="report-date"><small>SELECTED BEFORE</small><strong>{collectionLabel(reports.earlier)}</strong></div><span className="date-arrow"><ArrowRight size={17} /></span><div className="report-date latest-date"><small>SELECTED AFTER</small><strong>{collectionLabel(reports.latest)}</strong></div></div>
+                <div className="report-strip-right"><button className="report-source-link" onClick={() => navigate('reports')}><FileText size={14} />{allReports.length} source reports <ArrowUpRight size={12} /></button><div className="mode-switch" aria-label="Report view">{([{ key: 'compare', label: 'Compare' }, { key: 'latest', label: 'Later' }, { key: 'earlier', label: 'Earlier' }] as const).map((item) => <button key={item.key} className={mode === item.key ? 'selected' : ''} aria-pressed={mode === item.key} onClick={() => changeMode(item.key)}>{item.label}</button>)}</div></div>
               </section>
               {page === 'overview' && <>
                 <SummaryStats mode={mode} onFilter={focusFilter} />

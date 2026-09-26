@@ -48,7 +48,7 @@ test('status and trend filters, comparison modes and historical context work', a
   await expect(page.locator('#trend-filter')).toHaveCount(0)
   await expect(page.locator('.results-table thead')).not.toContainText('14 FEB 2025')
   await expect(page.locator('.historical-card')).toContainText('fictional', { ignoreCase: true })
-  await page.getByRole('button', { name: 'Latest', exact: true }).click()
+  await page.getByRole('button', { name: 'Later', exact: true }).click()
   await expect(page.locator('.results-table thead')).toContainText('14 FEB 2025')
 })
 

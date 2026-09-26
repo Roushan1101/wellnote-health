@@ -31,6 +31,11 @@ export interface Reading {
   page?: number
   reference: Reference
   sourceLabel: string
+  unit?: string
+  sourceRaw?: string
+  sourceUnit?: string
+  sourceReference?: string
+  note?: string
 }
 
 export interface Marker {
@@ -97,11 +102,33 @@ export interface ReportMetadata {
   pages?: number
   filename?: string
   age?: number
+  collectionDate?: string
+  collectionTime?: string
+  reportedDate?: string
+  laboratory?: string
+  note?: string
 }
 
-export interface Dataset {
+export interface LegacyDataset {
   schemaVersion: 1
   person: Person
   reports: Record<ReportKey, ReportMetadata>
   markers: Marker[]
 }
+
+export interface HistoryReport extends ReportMetadata {
+  id: string
+}
+
+export interface HistoryMarker extends Omit<Marker, 'earlier' | 'latest'> {
+  readings: Record<string, Reading | null>
+}
+
+export interface Dataset {
+  schemaVersion: 2
+  person: Person
+  reports: HistoryReport[]
+  markers: HistoryMarker[]
+}
+
+export type PairReports = Record<ReportKey, ReportMetadata>

@@ -2,7 +2,8 @@ import { ArrowRight, BookOpen, Info, Leaf, MessageCircle, X } from 'lucide-react
 import { useEffect, useRef } from 'react'
 import { groupLabel } from '../data/reports'
 import { useDataset } from '../DatasetContext'
-import { getChange, getTrend, rangeChanged, trendLabels } from '../lib/results'
+import { getChange, getTrend, rangeChanged, readingUnit, trendLabels } from '../lib/results'
+import { reportLabel } from '../lib/history'
 import type { Marker } from '../types'
 import { RangeTrack } from './Overview'
 import { GroupIcon, MedicalNote, StatusBadge } from './ui'
@@ -12,7 +13,7 @@ export function MarkerDetail({ marker, onClose, onGuide }: {
   onClose: () => void
   onGuide: (id: string) => void
 }) {
-  const { reports, guidance, isPersonal } = useDataset()
+  const { reports, guidance, isPersonal, historical } = useDataset()
   const dialogRef = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const dialog = dialogRef.current
@@ -46,17 +47,19 @@ export function MarkerDetail({ marker, onClose, onGuide }: {
             const reading = marker[key]
             return (
               <div className={`detail-reading ${key}`} key={key}>
-                <div className="eyebrow">{key === 'earlier' ? 'BEFORE' : 'NOW'} / {reports[key].label}</div>
-                <div className="detail-value">{reading?.raw ?? '\u2014'}<span>{reading ? marker.unit : 'Not reported'}</span></div>
+                <div className="eyebrow">{key === 'earlier' ? 'BEFORE' : 'AFTER'} / {reportLabel(reports[key])}</div>
+                <div className="detail-value">{reading?.raw ?? '\u2014'}<span>{reading ? readingUnit(marker, key) : 'Not reported'}</span></div>
                 <StatusBadge marker={marker} report={key} />
                 <dl><dt>{isPersonal ? 'Imported' : 'Illustrative'} reference</dt><dd>{reading?.reference.label ?? 'No result in this report'}</dd></dl>
                 {reading && <span className="source-link"><BookOpen size={13} />{isPersonal ? `Imported JSON: ${reading.sourceLabel}${reading.page ? ` / source page ${reading.page} (not attached)` : ''}` : `Synthetic fixture: ${marker.id}`} / {reports[key].date}</span>}
+                {reading && (reading.sourceRaw !== undefined || reading.sourceUnit !== undefined || reading.sourceReference !== undefined) && <p className="source-original"><strong>Original source before normalization:</strong> {reading.sourceRaw ?? 'value not supplied'} {reading.sourceUnit ?? ''}; reference: {reading.sourceReference ?? 'not supplied'}. Displayed value above is the supplied normalized result; this app performs no unit conversion.</p>}
+                {reading?.note && <p className="reading-note">{reading.note}</p>}
               </div>
             )
           })}
         </div>
         <div className="detail-change">
-          <div><span>REPORTED CHANGE</span><strong>{change.label}{change.amount !== null && change.amount !== 0 && marker.unit ? ` ${marker.unit}` : ''}</strong></div>
+          <div><span>REPORTED CHANGE</span><strong>{change.label}{change.amount !== null && change.amount !== 0 && readingUnit(marker, 'latest') ? ` ${readingUnit(marker, 'latest')}` : ''}</strong></div>
           <p>{change.detail}<span>{trendLabels[getTrend(marker)]}</span></p>
         </div>
         {marker.earlier && marker.latest && marker.latest.reference.kind === 'numeric' && <div className="detail-range"><RangeTrack marker={marker} /><div className="chart-legend"><span><i className="legend-earlier" />Earlier</span><span><i className="legend-latest" />Latest</span><span><i className="legend-range" />Latest {isPersonal ? 'imported' : 'illustrative'} reference</span></div></div>}
@@ -66,6 +69,7 @@ export function MarkerDetail({ marker, onClose, onGuide }: {
           {rangeChanged(marker) && <div className="range-change-callout"><Info size={16} /><span>The reference changed between reports. Each result is evaluated against its own report, not a shared cutoff.</span></div>}
         </section>
         {plan ? <section className="detail-guidance">
+          <p>Educational context for the selected later report: {reportLabel(reports.latest)}. {historical && <strong>Historical selection, not the newest report.</strong>}</p>
           <div><Leaf size={18} /><h3>Food & everyday habits</h3></div>
           <p>{plan.foods[0]}</p>
           <div><MessageCircle size={18} /><h3>A question for your clinician</h3></div>

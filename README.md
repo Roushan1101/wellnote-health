@@ -1,38 +1,38 @@
-# Wellnote public frontend + local health journal
+# Wellnote — public frontend, local health history
 
-A standalone React + TypeScript + Vite health journal with a safe public default. **Only synthetic data is published.** Alex Morgan and the bundled results are invented illustrations, not redacted or anonymized patient records. You can use your own data on the hosted page by loading a local JSON export; it is never uploaded. App flags and educational topics are not diagnoses or prescriptions.
+A React + TypeScript + Vite health journal with **four entirely fictional reports** as its public default. Alex Morgan, every bundled reading, sample date, reference and laboratory label are invented illustrations. No patient reports or medical PDFs belong in this repository.
 
-## Included
+The hosted app can read a personal **JSON export locally in the browser**. It does not upload the file. Flags and educational topics are not diagnoses, prescriptions, medication doses or a health score.
 
-- 25 synthetic measurements across 8 categories, for 14 February 2024 and 14 February 2025.
-- Comparison and single-report views, category/search/status/trend filters, sorting and pagination.
-- Detail dialogs, report-specific reference changes, censored bounds, a strict cutoff, qualitative results, and missing examples.
-- General educational guidance without prescriptions or supplement doses.
-- Filtered, labeled synthetic CSV exports, printable summaries, and downloadable synthetic report JSON.
-- A permanent demo/local-data notice, local fonts, no accounts, uploads, analytics, or remote AI calls.
-- A prominent **Load my health data** control, strict JSON validation, actionable errors, and optional unencrypted browser storage requiring explicit consent.
+## Compare a history, not just two fixed files
 
-The example has 24 results per report, 23 shared measurements, a latest-only magnesium result, and an earlier-only sample volume. References are illustrative rather than clinical standards.
+- The demo contains 25 markers across eight categories and four fictional collection dates: 14 February, 14 June and 14 October 2024, and 14 February 2025.
+- All reports appear on the timeline and source-summary page. Accessible Before/After selectors and a visible mobile timeline select any two reports or a single-report snapshot.
+- The default comparison is the earliest and newest report. Reversed choices are automatically ordered by date. Same-day samples stay distinct by report ID; ID ordering is a deterministic tie-break, **not an inferred sampling order**.
+- Charts, flags, filters, detail dialogs, summaries, CSV and print use the selected pair. Rows unavailable in both selected reports are excluded and counted separately.
+- Educational topics follow supported flags in the selected later report, with an explicit warning when that selection is historical rather than the newest report. Otherwise unsupported flags receive generic group-level review context, never an automatic treatment or iron recommendation.
+- Each reading retains its own reference and optional unit. Different effective units disable numerical deltas, percentage changes, trends and comparison plots. No unit conversion is inferred.
+- An explicit empty reading unit stays empty; malformed or different units cannot silently fall back to the marker default. Keep distinct tests (such as random and fasting glucose) under distinct marker IDs. Context-only references are not numerically scored, and strict targets are not overwritten by general risk bands.
+- Per-report JSON summaries cover all reports, not only the selected pair. The JSON template is a complete portable synthetic dataset; per-report summaries are not importable full histories.
 
-## Use your data on the published page
+## Load personal data without publishing it
 
-1. Prepare a version 1 Wellnote JSON export locally, outside this repository. Do not upload it to GitHub or a hosting service.
-2. Open the website and choose **Load my health data**. Only `.json` files up to 2 MiB are accepted; this does not parse PDFs.
-3. The file is read with `File.text()` and validated before replacing the synthetic dataset. Invalid input leaves the current dashboard unchanged.
-4. **Remember the next import** is off by default. Leave it off for memory-only use: reload or close the page to return to the demo. If explicitly enabled before import, data is saved only in this browser's `localStorage` and restored on the same site path.
-5. **Clear personal data / return to demo** removes the app's in-memory and saved copy and resets filters/dialogs. It does not delete the original JSON file or previous downloads. Loading another file without Remember also removes any previous saved copy.
+1. Prepare a Wellnote version 2 JSON export **outside this repository**. Version 1 two-report exports remain accepted and are migrated in memory.
+2. Choose **Load my health data** on the website. Files must be `.json`, no larger than 2 MiB. PDFs are not supported.
+3. The app reads the chosen file using `File.text()` and validates it before updating the dashboard. Invalid input leaves the current dataset intact and shows an actionable field-specific error.
+4. **Remember the next import** is off by default. Without consent, the data lives only in page memory; reload/close restores the demo.
+5. If explicitly enabled before import, the data is saved in this browser's unencrypted `localStorage`. Existing version-1 saved data is validated and migrated when read. The storage key remains path-scoped and backward compatible.
+6. **Clear personal data / return to demo** removes the app's saved and in-memory data. Loading another file without Remember also removes the previous saved copy. Clearing does not delete original files or previous downloads.
 
-Browser storage is **not encrypted**. Other code on the same origin (including other repository sites under the same GitHub Pages hostname) can access it. A path-scoped storage key prevents accidental mixing, not malicious access. Avoid shared devices and use trusted hosting and browsers. Private browsing/storage restrictions may prevent remembering; the app explains errors and supports memory-only import.
+Storage failures are explained rather than silently claiming a save/clear succeeded. Browser storage is **not encrypted** and can be read by other code on the same origin, including other repository sites on the same GitHub Pages hostname. Path scoping avoids accidental mixing, not malicious access. Avoid shared devices and use trusted browsers/hosting.
 
-Imported views use live profile, report dates, readings, references and counts through React context. Guidance topics are shown only for supported, currently flagged latest measurements; no topic means neither normal health nor absence of other flags. Original PDFs are never attached or linked; optional page numbers are plain-text provenance. Imported references and transcription accuracy are not independently verified.
+## Portable schema v2
 
-### Portable JSON schema (version 1)
-
-The top-level object has exactly these keys:
+Top-level keys are exactly `schemaVersion`, `person`, `reports`, `markers`:
 
 ```ts
 {
-  schemaVersion: 1,
+  schemaVersion: 2,
   person: {
     name: string,
     initials: string,
@@ -40,51 +40,76 @@ The top-level object has exactly these keys:
     latestReportedAge?: number,
     reportedSex?: string
   },
-  reports: {
-    earlier: ReportMetadata,
-    latest: ReportMetadata
-  },
-  markers: Marker[]
+  reports: ReportInput[],
+  markers: HistoryMarker[]
 }
 
-type ReportMetadata = {
-  date: string;       // valid YYYY-MM-DD; latest must be after earlier
-  label: string;
-  fullDate: string;
-  shortDate: string;
-  id?: string;
-  year?: number | string; // matching year; a four-digit string is normalized to a number
-  pages?: number;     // integer 1–1000
-  filename?: string;  // optional metadata only, never turned into a link
-  age?: number;       // integer 0–130
+type ReportInput = {
+  id: string;                 // unique sample ID; required
+  date: string;               // YYYY-MM-DD, equals collectionDate when supplied
+  collectionDate?: string;    // verified sample collection date
+  collectionTime?: string;    // printed local time, e.g. "11:32 AM"; no timezone conversion
+  reportedDate?: string;      // distinct from collection date
+  laboratory?: string;
+  note?: string;
+  label?: string;             // accepted, but display labels are derived from date
+  fullDate?: string;
+  shortDate?: string;
+  year?: number | string;     // matching year; four-digit string normalized to number
+  pages?: number;             // integer 1–1000
+  filename?: string;          // metadata only; never turned into a PDF link
+  age?: number;               // integer 0–130
 }
+
+type HistoryMarker = {
+  id: string;
+  name: string;
+  group: "heart" | "nutrition" | "blood" | "liver" |
+    "kidney" | "glucose" | "thyroid" | "urine";
+  unit: string;               // default display unit
+  priority: number;           // integer 0–10000
+  note?: string;              // generic marker context
+  readings: Record<string, Reading | null>; // keys are report IDs
+}
+
+type Reading = {
+  raw: string;
+  sourceLabel: string;
+  reference: Reference;
+  page?: number;
+  unit?: string;              // overrides marker.unit for this sample
+  sourceRaw?: string;         // original value before an explicit external normalization
+  sourceUnit?: string;
+  sourceReference?: string;
+  note?: string;              // per-report interpretation/provenance
+}
+
+type Reference =
+  | { kind: "numeric"; label: string; min?: number; max?: number;
+      minExclusive?: boolean; maxExclusive?: boolean; nilIsZero?: boolean }
+  | { kind: "text"; label: string; accepted: string[] }
+  | { kind: "context"; label: string };
 ```
 
-`Marker`, `Reading`, and reference types are defined in `src/types.ts`:
+Validation:
 
-- Marker: `id`, `name`, `group`, `unit`, `priority`, `earlier`, `latest`, optional `note`.
-- `group`: `heart | nutrition | blood | liver | kidney | glucose | thyroid | urine`.
-- `priority`: integer 0–10000. Marker IDs are unique lowercase letters/digits separated by hyphens.
-- Reading: `{raw: string, sourceLabel: string, reference: Reference, page?: number}`, or `null` when not reported. Each marker needs at least one reading. Optional page must be within its report's page count, if supplied.
-- Numeric reference: `{kind:"numeric", label:string, min?:number, max?:number, minExclusive?:boolean, maxExclusive?:boolean, nilIsZero?:boolean}`. At least one finite bound is required; min cannot exceed max.
-- Text reference: `{kind:"text", label:string, accepted:string[]}` with 1–30 accepted strings.
-- Context reference: `{kind:"context", label:string}` for unscored measurements.
-- Maximum 500 markers. Unknown properties, duplicate IDs, invalid dates/types, oversized text, malformed references, and missing required IDs are rejected with a field-specific error.
+- 2–50 reports and 1–500 unique markers. Same-day reports are supported; report IDs, not dates, identify samples.
+- No predefined marker IDs are required. Sparse histories and empty selected pairs have safe empty states.
+- Missing `readings` keys are normalized to `null`. Unknown report keys are rejected. A marker needs at least one reading somewhere in the history.
+- Duplicate report/marker IDs, unsupported fields, invalid dates/types, oversized strings, nonfinite/inverted references and malformed flags are rejected.
+- Marker IDs use lowercase letters/digits separated by hyphens. Reserved prototype-related report IDs are forbidden.
+- `date` must equal `collectionDate` when it is supplied. A collection time requires a collection date. Labels are derived without local timezone shifts; supplied display labels cannot override the canonical date.
+- Missing collection dates are explicitly labeled **“Collection date not supplied; legacy report date”**. Migration does not claim an old report date was a sampling date.
+- Numeric references require a finite minimum or maximum. Text references require 1–30 accepted strings. Optional source page numbers must not exceed a supplied report page count.
+- Ages are integers 0–130. Report year must match the canonical date.
 
-Required IDs for the comparison interface:
+Version 1 input remains `{schemaVersion:1,person,reports:{earlier,latest},markers:Marker[]}` with per-marker `earlier`/`latest` readings. Existing IDs are retained; absent IDs become `legacy-earlier`/`legacy-latest`. Chronological projection does not mutate canonical readings.
 
-```text
-vitamin-d, vitamin-b12, iron, magnesium, total-cholesterol, ldl, hdl,
-non-hdl, hdl-ldl-ratio, triglycerides, hscrp, ggt, lymphocytes
-```
-
-Other IDs are optional. Do not invent a result to satisfy the schema: one of a marker's readings may be `null`, but if a required marker is entirely absent this version cannot import the dataset. The error names every missing ID.
-
-**Download JSON template** provides a complete valid synthetic dataset. Per-report JSON downloads are human-readable summaries, not full portable datasets; use the template or a full version 1 local export for importing. Keep personal exports outside this repository; names such as `*.personal.json` and `wellnote-personal-data.json` are ignored as an additional guard, not a substitute for review.
+`src/lib/dataset.ts` validates/migrates inputs; `src/types.ts` describes normalized runtime types, where generated date labels are present. `src/lib/history.ts` projects selected pairs. `Reading.source*` fields are shown beside normalized values in details and retained in CSV/JSON exports. They document conversions performed by the export producer; this app does not perform or verify those conversions.
 
 ## Run and verify
 
-Use Node.js 22 and npm. Run all commands **inside this folder**:
+Use Node.js 22 and npm, inside this folder:
 
 ```sh
 npm ci
@@ -95,25 +120,23 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-`npm run preview` serves the production build on loopback. End-to-end tests start their own preview server on port 5196. The browser installation is only needed once. No secrets or environment variables are required.
+The production preview uses loopback. Browser tests start their own preview on port 5196 and use only fictional fixtures. Coverage includes all six demo pairs, sparse inputs, collection/report dates, same-day laboratories, unit mismatch safety, normalization provenance, legacy migration/storage, exports, print, keyboard/mobile controls and CSP.
 
-## Publish to GitHub Pages
+## GitHub Pages
 
-Publish **only the contents of this `wellnote-demo` folder as the repository root**, not its parent folder. Review all tracked files before publishing. Never include personal reports, patient data, PDFs, build artifacts, or credentials.
+Publish **only this folder's contents as the repository root**, never its parent. Keep personal JSON exports, PDFs, environment files and credentials out of the repository.
 
-1. Authenticate to GitHub and create a repository for this synthetic demo.
-2. Add only this folder's contents, including its synthetic `src/data` files and `package-lock.json`, to the repository. Use a `main` branch.
-3. In repository **Settings → Pages → Build and deployment**, choose **GitHub Actions**.
-4. Push to `main` or run the supplied workflow manually.
-5. The workflow installs from the lockfile, runs unit tests, builds, uploads `dist`, and deploys to the `github-pages` environment. Its deployment job can write Pages and obtain an identity token; repository contents are read-only.
-6. Open the deployment URL and verify navigation, downloads, and the demo banner.
+1. Create/authenticate to the intended GitHub repository and use a `main` branch.
+2. Review tracked files, including the intentionally public synthetic `src/data` and lockfile.
+3. In **Settings → Pages**, choose **GitHub Actions**.
+4. Push to `main` or manually run the supplied Pages workflow.
+5. It performs `npm ci`, unit tests, production build, artifact upload and deployment to the `github-pages` environment. Repository content permission is read-only; only deployment receives Pages write and identity-token permissions.
+6. Verify the deployment URL, sample selection, mobile layout and local import behavior.
 
-Vite uses relative base `./`, a relative favicon, and hash navigation so repository-subpath Pages sites work. If publishing to a non-`main` default branch, update the workflow trigger. Pages availability and organization policies depend on the GitHub account.
+Vite uses relative base `./`, a relative favicon and hash navigation for repository-subpath hosting. No secrets or environment variables are needed. Private exports should remain outside the repository; `.gitignore` also excludes `*.personal.json`, the conventional personal-export filename, PDFs and environment files. **Ignore rules do not replace a privacy audit.**
 
 ## Privacy boundary
 
-This repository must contain only generic UI and newly invented fixtures. No original reports, private metadata, source filenames, personal identifiers, or extracted real results are required or included. `.gitignore` excludes PDFs and environment files, but **ignore rules are not a privacy audit**. Do not add real data even locally to a copy intended for publication.
+Only synthetic data and generic code are published. No report uploads, accounts, analytics, external fonts or remote AI services are used. Production CSP includes `connect-src 'none'`, self-hosted script/font/style restrictions, blocked objects and blocked form submission. Development retains Vite's local hot-reload connection; use a production build for the locked-down hosted experience.
 
-All public assets can be read by any visitor. Hosting providers may log routine requests; optional educational links leave this site. Exports are generated in the browser. Personal imports are never uploaded and are saved in browser storage only with explicit consent. Production HTML has a Content Security Policy with `connect-src 'none'`, self-hosted scripts/fonts/styles, blocked objects and blocked form submission. Development retains Vite's local hot-reload connection; use the production build for the locked-down hosted experience.
-
-The source fixtures live in `src/data/markers.ts` and `src/data/reports.ts`; they are intentionally tracked for a reproducible build. Local import adds no server persistence or authentication. CSP is defense in depth, not encryption or protection from a compromised hosting origin/browser extension.
+Hosting providers can log normal page requests. Optional educational links navigate to external sites without a referrer. CSP is defense in depth, not encryption or protection from a compromised origin or browser extension. Imported references and extraction accuracy are not independently verified. Original PDFs are never attached or linked; page numbers remain plain-text provenance.

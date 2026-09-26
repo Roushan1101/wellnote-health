@@ -38,7 +38,7 @@ export function DataControls() {
           const dataset = parseDataset(await file.text())
           if (request === generation.current) loadDataset(dataset, consent)
         } catch (error) {
-          if (request === generation.current) setError(error instanceof Error ? error.message : 'The file could not be read. Try a valid Wellnote JSON export.')
+          if (request === generation.current) setError(error instanceof Error ? error.message : 'The file could not be read. Try a valid Wellnote version 1 or 2 JSON export.')
         } finally {
           if (request === generation.current) setBusy(false)
         }

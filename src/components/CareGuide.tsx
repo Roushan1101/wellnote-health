@@ -1,22 +1,23 @@
-import { ArrowRight, ArrowUpRight, ExternalLink, Footprints, Heart, Leaf, MessageCircle, ShieldCheck, Sun } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, ExternalLink, Footprints, Heart, Leaf, MessageCircle, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { useDataset } from '../DatasetContext'
+import { reportLabel } from '../lib/history'
+import { readingUnit } from '../lib/results'
+import { groupLabel } from '../data/reports'
 import type { Guidance, Marker } from '../types'
 import { GroupIcon, MedicalNote, StatusBadge } from './ui'
 
 export function GuidancePreview({ onGuide }: { onGuide: (id?: string) => void }) {
-  const { isPersonal } = useDataset()
-  if (isPersonal) return null
+  const { guidance, historical } = useDataset()
+  if (!guidance.length) return null
   return (
     <section className="guidance-preview" aria-labelledby="small-steps-title">
       <div className="section-heading">
-        <div><div className="eyebrow">GOOD HEALTH IS BUILT IN SMALL STEPS</div><h2 id="small-steps-title">A little intention, every day.</h2></div>
+        <div><div className="eyebrow">{historical ? 'HISTORICAL SELECTION / GENERAL EDUCATION' : 'SELECTED LATER REPORT / GENERAL EDUCATION'}</div><h2 id="small-steps-title">A little intention, every day.</h2></div>
         <button className="text-button" onClick={() => onGuide()}>Your next steps <ArrowUpRight size={15} /></button>
       </div>
       <div className="habit-grid">
-        <button className="habit-card" onClick={() => onGuide('heart')}><span className="habit-icon"><Leaf size={23} /></span><div><h3>Make room for more fibre.</h3><p>Oats, dal, beans and whole grains. Small swaps to support your cholesterol.</p><span>Eat with intention <ArrowRight size={13} /></span></div></button>
-        <button className="habit-card" onClick={() => onGuide('heart')}><span className="habit-icon lilac-icon"><Footprints size={23} /></span><div><h3>Find your everyday movement.</h3><p>A walk you enjoy is a good start. Build a sustainable routine at your pace.</p><span>Build a habit <ArrowRight size={13} /></span></div></button>
-        <button className="habit-card" onClick={() => onGuide('vitamin-d')}><span className="habit-icon peach-icon"><Sun size={23} /></span><div><h3>Bring vitamin D to the conversation.</h3><p>Explore food sources and a clinician-led plan. Skip the self-prescribed megadoses.</p><span>Prepare for a check-in <ArrowRight size={13} /></span></div></button>
+        {guidance.slice(0, 3).map((plan) => <button key={plan.id} className="habit-card" onClick={() => onGuide(plan.id)}><span className="habit-icon"><GroupIcon group={plan.group} size={23} /></span><div><h3>{plan.title}</h3><p>{plan.foods[0]}</p><span>Read general educational context <ArrowRight size={13} /></span></div></button>)}
       </div>
     </section>
   )
@@ -38,9 +39,14 @@ function GuidanceCard({ plan, section, onSelect }: {
       <div className="guidance-markers">
         {plan.markerIds.map((id) => {
           const marker = findMarker(id)
-          return <button key={id} onClick={() => onSelect(marker)}><span>{marker.name}<strong>{marker.latest?.raw} <small>{marker.unit}</small></strong></span><StatusBadge marker={marker} compact /><ArrowUpRight size={13} /></button>
+          if (!marker) return null
+          return <button key={id} onClick={() => onSelect(marker)}><span>{marker.name}<strong>{marker.latest?.raw} <small>{readingUnit(marker, 'latest')}</small></strong></span><StatusBadge marker={marker} compact /><ArrowUpRight size={13} /></button>
         })}
       </div>
+      <div className="guidance-reading-notes">{plan.markerIds.map((id) => {
+        const marker = findMarker(id)
+        return marker?.latest?.note ? <p key={id}><strong>{marker.name} — supplied report note:</strong> {marker.latest.note}</p> : null
+      })}</div>
       <div className={`guidance-columns ${section !== 'all' ? 'single-section' : ''}`}>
         {section !== 'clinician' && <div className="everyday-guidance">
           <h3><Leaf size={18} />On your plate</h3><ul>{plan.foods.map((item) => <li key={item}>{item}</li>)}</ul>
@@ -59,17 +65,17 @@ function GuidanceCard({ plan, section, onSelect }: {
 }
 
 export function CareGuide({ initialTopic, onSelect }: { initialTopic: string; onSelect: (marker: Marker) => void }) {
-  const { guidance, isPersonal } = useDataset()
+  const { guidance, isPersonal, historical, reports } = useDataset()
   const [topic, setTopic] = useState(initialTopic)
   const [section, setSection] = useState<'all' | 'everyday' | 'clinician'>('all')
   const plans = guidance.filter((plan) => topic === 'all' || topic === plan.id)
   return (
     <div className="care-guide-page">
-      <div className="guide-intro"><span><Heart size={20} /></span><p><strong>{guidance.length} {isPersonal ? 'relevant educational' : 'fictional'} focus areas. General education only.</strong><br />{isPersonal ? 'Topics are shown only for supported measurements currently flagged against your imported latest references. Not every flag has a topic; review all results with a clinician.' : 'These invented scenarios demonstrate the interface, not personalized health advice.'} No treatment or dosage is prescribed.</p></div>
+      <div className="guide-intro"><span><Heart size={20} /></span><p><strong>{guidance.length} {isPersonal ? 'relevant educational' : 'fictional'} focus areas. General education only.</strong><br />Selected later report: {reportLabel(reports.latest)}. {historical && <strong>Historical selection — not your newest report. </strong>}Supported topics cover relevant flags; other flags receive general group-level review context, not a treatment recommendation. No treatment or dosage is prescribed.</p></div>
       <div className="guide-filters">
         <div className="guide-topics" aria-label="Filter guidance by focus area">
           <button className={topic === 'all' ? 'active' : ''} onClick={() => setTopic('all')} aria-pressed={topic === 'all'}>All focus areas</button>
-          {guidance.map((plan) => <button key={plan.id} className={topic === plan.id ? 'active' : ''} onClick={() => setTopic(plan.id)} aria-pressed={topic === plan.id}><GroupIcon group={plan.group} size={15} />{plan.id === 'vitamin-d' ? 'Vitamin D' : plan.id === 'heart' ? 'Cholesterol' : plan.id === 'blood' ? 'Blood count' : 'Liver'}</button>)}
+          {guidance.map((plan) => <button key={plan.id} className={topic === plan.id ? 'active' : ''} onClick={() => setTopic(plan.id)} aria-pressed={topic === plan.id}><GroupIcon group={plan.group} size={15} />{plan.id.startsWith('review-') ? `${groupLabel(plan.group)} review` : plan.id === 'vitamin-d' ? 'Vitamin D' : plan.id === 'heart' ? 'Cholesterol' : plan.id === 'blood' ? 'Blood count' : 'Liver'}</button>)}
         </div>
         <div className="guide-sections" aria-label="Filter guidance type">
           {([{ value: 'all', label: 'Full guide' }, { value: 'everyday', label: 'Food & habits' }, { value: 'clinician', label: 'Clinician discussion' }] as const).map((item) => <button key={item.value} className={section === item.value ? 'active' : ''} onClick={() => setSection(item.value)} aria-pressed={section === item.value}>{item.label}</button>)}

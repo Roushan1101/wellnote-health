@@ -1,6 +1,6 @@
 import { groupLabel, reports } from '../data/reports'
 import type {
-  Dataset, Filters, Marker, NumericReference, ParsedValue, Reading, ReportKey, Status, Trend, ViewMode,
+  PairReports, Filters, Marker, NumericReference, ParsedValue, Reading, ReportKey, Status, Trend, ViewMode,
 } from '../types'
 
 export const defaultFilters: Filters = {
@@ -99,9 +99,12 @@ export function exactValue(reading: Reading | null): number | null {
   return value.kind === 'exact' ? value.value : null
 }
 
+export const readingUnit = (marker: Marker, key: ReportKey): string => marker[key]?.unit ?? marker.unit
+export const unitsDiffer = (marker: Marker): boolean => Boolean(marker.earlier && marker.latest && readingUnit(marker, 'earlier') !== readingUnit(marker, 'latest'))
+
 export function rangeChanged(marker: Marker): boolean {
   return Boolean(marker.earlier && marker.latest
-    && marker.earlier.reference.label !== marker.latest.reference.label)
+    && JSON.stringify(marker.earlier.reference) !== JSON.stringify(marker.latest.reference))
 }
 
 function distanceFromRange(reading: Reading): number | null {
@@ -115,8 +118,10 @@ function distanceFromRange(reading: Reading): number | null {
 
 export function getTrend(marker: Marker): Trend {
   const { earlier, latest } = marker
+  if (!earlier && !latest) return 'missing'
   if (!earlier) return 'new'
   if (!latest) return 'missing'
+  if (unitsDiffer(marker)) return 'context'
   const previous = readingStatus(earlier)
   const current = readingStatus(latest)
   if (previous === 'context' || current === 'context') return 'context'
@@ -147,10 +152,12 @@ export interface Change {
   direction: 'up' | 'down' | 'same' | 'none'
 }
 
-export function getChange(marker: Marker, metadata: Dataset['reports'] = reports): Change {
+export function getChange(marker: Marker, metadata: PairReports = reports): Change {
   const none = { amount: null, percent: null, direction: 'none' as const }
+  if (!marker.earlier && !marker.latest) return { ...none, label: 'Unavailable', detail: 'Neither selected report contains this measurement' }
   if (!marker.earlier) return { ...none, label: 'New result', detail: `Not reported on ${metadata.earlier.shortDate}` }
   if (!marker.latest) return { ...none, label: 'Not reported', detail: `No ${metadata.latest.shortDate} measurement` }
+  if (unitsDiffer(marker)) return { ...none, label: 'Units differ', detail: 'Comparison disabled; no automatic unit conversion' }
   const before = parseValue(marker.earlier.raw)
   const now = parseValue(marker.latest.raw)
   if (before.kind === 'exact' && now.kind === 'exact') {
@@ -180,7 +187,7 @@ export function getChange(marker: Marker, metadata: Dataset['reports'] = reports
 export function displayStatus(marker: Marker, report: ReportKey): string {
   const reading = marker[report]
   const status = readingStatus(reading)
-  if (marker.id === 'hscrp' && status === 'normal' && reading) {
+  if (marker.id === 'hscrp' && readingUnit(marker, report) === 'mg/L' && status === 'normal' && reading) {
     const parsed = parseValue(reading.raw)
     if ((parsed.kind === 'less' && parsed.value <= 1) || (parsed.kind === 'exact' && parsed.value < 1)) return 'Low-risk band'
     return 'Average-risk band'
@@ -245,21 +252,25 @@ function csvCell(value: string): string {
   return `"${safe.replace(/"/g, '""')}"`
 }
 
-export function createCsv(markers: Marker[], metadata: Dataset['reports'] = reports, isPersonal = false): string {
+export function createCsv(markers: Marker[], metadata: PairReports = reports, isPersonal = false): string {
   const header = [
-    'Dataset', 'Biomarker', 'Category', 'Unit',
-    `${metadata.earlier.date} result`, 'Earlier reference', 'Earlier status', 'Earlier provenance',
-    `${metadata.latest.date} result`, 'Latest reference', 'Latest status', 'Latest provenance',
+    'Dataset', 'Biomarker', 'Category',
+    'Earlier report ID', 'Earlier date basis', `${metadata.earlier.date} result`, 'Earlier unit', 'Earlier reference', 'Earlier status', 'Earlier provenance', 'Earlier original value / unit / reference', 'Earlier note',
+    'Later report ID', 'Later date basis', `${metadata.latest.date} result`, 'Later unit', 'Latest reference', 'Latest status', 'Latest provenance', 'Later original value / unit / reference', 'Later note',
     'Reported change', 'Change detail', 'Comparison', 'Notes',
   ]
   const rows = markers.map((marker) => {
     const change = getChange(marker, metadata)
     return [
-      isPersonal ? 'PERSONAL LOCAL IMPORT - KEEP PRIVATE' : 'SYNTHETIC DEMO - NOT A MEDICAL RECORD', marker.name, groupLabel(marker.group), marker.unit,
-      marker.earlier?.raw ?? 'Not reported', marker.earlier?.reference.label ?? '',
+      isPersonal ? 'PERSONAL LOCAL IMPORT - KEEP PRIVATE' : 'SYNTHETIC DEMO - NOT A MEDICAL RECORD', marker.name, groupLabel(marker.group),
+      metadata.earlier.id ?? 'earlier', metadata.earlier.collectionDate ? `Collection date${metadata.earlier.collectionTime ? ` / ${metadata.earlier.collectionTime}` : ''}` : 'Collection date not supplied; legacy report date',
+      marker.earlier?.raw ?? 'Not reported', readingUnit(marker, 'earlier'), marker.earlier?.reference.label ?? '',
       displayStatus(marker, 'earlier'), marker.earlier?.sourceLabel ?? '',
-      marker.latest?.raw ?? 'Not reported', marker.latest?.reference.label ?? '',
+      [marker.earlier?.sourceRaw, marker.earlier?.sourceUnit, marker.earlier?.sourceReference].filter((value) => value !== undefined).join(' / '), marker.earlier?.note ?? '',
+      metadata.latest.id ?? 'latest', metadata.latest.collectionDate ? `Collection date${metadata.latest.collectionTime ? ` / ${metadata.latest.collectionTime}` : ''}` : 'Collection date not supplied; legacy report date',
+      marker.latest?.raw ?? 'Not reported', readingUnit(marker, 'latest'), marker.latest?.reference.label ?? '',
       displayStatus(marker, 'latest'), marker.latest?.sourceLabel ?? '',
+      [marker.latest?.sourceRaw, marker.latest?.sourceUnit, marker.latest?.sourceReference].filter((value) => value !== undefined).join(' / '), marker.latest?.note ?? '',
       change.label, change.detail, trendLabels[getTrend(marker)], marker.note ?? '',
     ]
   })

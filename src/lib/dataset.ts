@@ -1,14 +1,8 @@
-import { markers } from '../data/markers'
-import { person, reports } from '../data/reports'
-import type { Dataset, Marker, Person, Reading, Reference, ReportMetadata } from '../types'
+import type { Dataset, HistoryMarker, HistoryReport, Marker, Person, Reading, Reference } from '../types'
+import { compareReports } from './history'
+export { demoDataset } from '../data/history'
 
 export const MAX_DATASET_BYTES = 2 * 1024 * 1024
-export const requiredMarkerIds = [
-  'vitamin-d', 'vitamin-b12', 'iron', 'magnesium', 'total-cholesterol', 'ldl', 'hdl',
-  'non-hdl', 'hdl-ldl-ratio', 'triglycerides', 'hscrp', 'ggt', 'lymphocytes',
-] as const
-
-export const demoDataset: Dataset = { schemaVersion: 1, person, reports, markers }
 
 function fail(path: string, message: string): never {
   throw new Error(`${path}: ${message}`)
@@ -69,29 +63,50 @@ function reference(value: unknown, path: string): Reference {
 
 function reading(value: unknown, path: string, pages?: number): Reading | null {
   if (value === null) return null
-  const input = object(value, path, ['raw', 'page', 'reference', 'sourceLabel'])
+  const input = object(value, path, ['raw', 'page', 'reference', 'sourceLabel', 'unit', 'sourceRaw', 'sourceUnit', 'sourceReference', 'note'])
   const result: Reading = {
     raw: text(input.raw, `${path}.raw`, 160),
     sourceLabel: text(input.sourceLabel, `${path}.sourceLabel`),
     reference: reference(input.reference, `${path}.reference`),
   }
   if (input.page !== undefined) result.page = number(input.page, `${path}.page`, 1, pages ?? 1000, true)
+  for (const key of ['unit', 'sourceRaw', 'sourceUnit', 'sourceReference', 'note'] as const) {
+    if (input[key] !== undefined) result[key] = text(input[key], `${path}.${key}`, key === 'note' ? 4000 : 400, key === 'unit' || key === 'sourceUnit')
+  }
   return result
 }
 
-function report(value: unknown, path: string): ReportMetadata {
-  const input = object(value, path, ['id', 'date', 'label', 'fullDate', 'shortDate', 'year', 'pages', 'filename', 'age'])
-  const date = text(input.date, `${path}.date`, 10)
+function calendarDate(value: unknown, path: string): string {
+  const date = text(value, path, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date) {
-    fail(`${path}.date`, 'use a valid calendar date in YYYY-MM-DD format.')
+    fail(path, 'use a valid calendar date in YYYY-MM-DD format.')
   }
-  const result: ReportMetadata = {
-    date, label: text(input.label, `${path}.label`),
-    fullDate: text(input.fullDate, `${path}.fullDate`), shortDate: text(input.shortDate, `${path}.shortDate`),
+  return date
+}
+
+function report(value: unknown, path: string, legacyId?: string): HistoryReport {
+  const input = object(value, path, ['id', 'date', 'label', 'fullDate', 'shortDate', 'year', 'pages', 'filename', 'age', 'collectionDate', 'collectionTime', 'reportedDate', 'laboratory', 'note'])
+  const date = calendarDate(input.date, `${path}.date`)
+  const id = input.id === undefined && legacyId ? legacyId : text(input.id, `${path}.id`, 100)
+  if (['__proto__', 'prototype', 'constructor'].includes(id)) fail(`${path}.id`, 'reserved report ID.')
+  const parsed = new Date(`${date}T00:00:00Z`)
+  const shortDate = parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+  const fullDate = parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const result: HistoryReport = {
+    id, date, label: shortDate, fullDate, shortDate,
   }
-  for (const key of ['id', 'filename'] as const) {
-    if (input[key] !== undefined) result[key] = text(input[key], `${path}.${key}`)
+  for (const key of ['label', 'shortDate', 'fullDate'] as const) {
+    if (input[key] !== undefined) text(input[key], `${path}.${key}`)
   }
+  for (const key of ['filename', 'collectionTime', 'laboratory', 'note'] as const) {
+    if (input[key] !== undefined) result[key] = text(input[key], `${path}.${key}`, key === 'note' ? 4000 : 400)
+  }
+  if (input.collectionDate !== undefined) {
+    result.collectionDate = calendarDate(input.collectionDate, `${path}.collectionDate`)
+    if (result.collectionDate !== date) fail(`${path}.date`, 'must equal collectionDate when collectionDate is supplied.')
+  }
+  if (input.collectionTime !== undefined && !result.collectionDate) fail(`${path}.collectionTime`, 'provide collectionDate with a collection time.')
+  if (input.reportedDate !== undefined) result.reportedDate = calendarDate(input.reportedDate, `${path}.reportedDate`)
   if (input.year !== undefined) {
     const year = typeof input.year === 'string' && /^\d{4}$/.test(input.year) ? Number(input.year) : input.year
     result.year = number(year, `${path}.year`, 1, 9999, true)
@@ -104,46 +119,53 @@ function report(value: unknown, path: string): ReportMetadata {
 
 export function validateDataset(value: unknown): Dataset {
   const input = object(value, 'dataset', ['schemaVersion', 'person', 'reports', 'markers'])
-  if (input.schemaVersion !== 1) fail('schemaVersion', 'expected 1. Export a version 1 Wellnote dataset.')
+  if (input.schemaVersion !== 1 && input.schemaVersion !== 2) fail('schemaVersion', 'expected 1 or 2. Export a supported Wellnote dataset.')
   const profile = object(input.person, 'person', ['name', 'firstName', 'initials', 'latestReportedAge', 'reportedSex'])
   const person: Person = { name: text(profile.name, 'person.name', 160), initials: text(profile.initials, 'person.initials', 12) }
   for (const key of ['firstName', 'reportedSex'] as const) {
     if (profile[key] !== undefined) person[key] = text(profile[key], `person.${key}`, 160)
   }
   if (profile.latestReportedAge !== undefined) person.latestReportedAge = number(profile.latestReportedAge, 'person.latestReportedAge', 0, 130, true)
-  const pair = object(input.reports, 'reports', ['earlier', 'latest'])
-  const reports = { earlier: report(pair.earlier, 'reports.earlier'), latest: report(pair.latest, 'reports.latest') }
-  if (reports.latest.date <= reports.earlier.date) fail('reports', 'latest.date must be later than earlier.date.')
+  const legacy = input.schemaVersion === 1
+  let reports: HistoryReport[]
+  if (legacy) {
+    const pair = object(input.reports, 'reports', ['earlier', 'latest'])
+    reports = [report(pair.earlier, 'reports.earlier', 'legacy-earlier'), report(pair.latest, 'reports.latest', 'legacy-latest')]
+  } else {
+    if (!Array.isArray(input.reports) || input.reports.length < 2 || input.reports.length > 50) fail('reports', 'provide 2–50 reports.')
+    reports = input.reports.map((value, index) => report(value, `reports[${index}]`))
+  }
+  if (new Set(reports.map((item) => item.id)).size !== reports.length) fail('reports', 'duplicate report IDs; each sample needs a unique ID, even on the same date.')
   if (!Array.isArray(input.markers) || input.markers.length < 1 || input.markers.length > 500) fail('markers', 'provide 1–500 measurements.')
   const seen = new Set<string>()
-  const markers: Marker[] = input.markers.map((value, index) => {
+  const markers: HistoryMarker[] = input.markers.map((value, index) => {
     const path = `markers[${index}]`
-    const item = object(value, path, ['id', 'name', 'group', 'unit', 'earlier', 'latest', 'note', 'priority'])
+    const item = object(value, path, ['id', 'name', 'group', 'unit', ...(legacy ? ['earlier', 'latest'] : ['readings']), 'note', 'priority'])
     const id = text(item.id, `${path}.id`, 100)
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) fail(`${path}.id`, 'use lowercase letters, digits and hyphens.')
     if (seen.has(id)) fail(`${path}.id`, `duplicate ID: ${id}.`)
     seen.add(id)
     const group = text(item.group, `${path}.group`)
     if (!['heart', 'nutrition', 'blood', 'liver', 'kidney', 'glucose', 'thyroid', 'urine'].includes(group)) fail(`${path}.group`, 'unknown health category.')
-    const result: Marker = {
+    const readings = legacy
+      ? { [reports[0]!.id]: item.earlier, [reports[1]!.id]: item.latest }
+      : object(item.readings, `${path}.readings`, reports.map((report) => report.id))
+    const result: HistoryMarker = {
       id, name: text(item.name, `${path}.name`, 160), group: group as Marker['group'],
       unit: text(item.unit, `${path}.unit`, 80, true),
       priority: number(item.priority, `${path}.priority`, 0, 10000, true),
-      earlier: reading(item.earlier, `${path}.earlier`, reports.earlier.pages),
-      latest: reading(item.latest, `${path}.latest`, reports.latest.pages),
+      readings: Object.fromEntries(reports.map((report) => [report.id, reading(Object.hasOwn(readings, report.id) ? readings[report.id] ?? null : null, `${path}.readings.${report.id}`, report.pages)])),
     }
-    if (!result.earlier && !result.latest) fail(path, 'at least one report must contain a reading.')
+    if (!Object.values(result.readings).some(Boolean)) fail(path, 'at least one report must contain a reading.')
     if (item.note !== undefined) result.note = text(item.note, `${path}.note`, 4000, true)
     return result
   })
-  const missing = requiredMarkerIds.filter((id) => !seen.has(id))
-  if (missing.length) fail('markers', `missing required IDs: ${missing.join(', ')}. Include these markers; one reading may be null.`)
-  return { schemaVersion: 1, person, reports, markers }
+  return { schemaVersion: 2, person, reports: reports.sort(compareReports), markers }
 }
 
 export function parseDataset(json: string): Dataset {
   if (new TextEncoder().encode(json).byteLength > MAX_DATASET_BYTES) fail('file', 'maximum size is 2 MiB.')
   let parsed: unknown
-  try { parsed = JSON.parse(json) } catch { return fail('file', 'invalid JSON. Choose a Wellnote version 1 JSON export, not a PDF.') }
+  try { parsed = JSON.parse(json) } catch { return fail('file', 'invalid JSON. Choose a Wellnote version 1 or 2 JSON export, not a PDF.') }
   return validateDataset(parsed)
 }

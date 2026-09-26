@@ -1,7 +1,7 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, CircleCheck, FlaskConical, Info, Sun } from 'lucide-react'
 import { useState } from 'react'
 import { useDataset } from '../DatasetContext'
-import { exactValue, formatNumber, getChange, needsAttention, readingStatus, reportForMode, summarize } from '../lib/results'
+import { exactValue, formatNumber, getChange, needsAttention, readingStatus, readingUnit, unitsDiffer, reportForMode, summarize } from '../lib/results'
 import type { Marker, StatusFilter, TrendFilter, ViewMode } from '../types'
 import { StatusBadge } from './ui'
 
@@ -23,7 +23,7 @@ export function SummaryStats({
       <div className="stats-grid">
         <button className="stat-card" onClick={() => onFilter('all')}>
           <div className="stat-top"><span>Markers tracked</span><FlaskConical size={18} /></div>
-          <div className="stat-number">{markers.length}<span className="stat-tag">across 2 reports</span></div>
+          <div className="stat-number">{markers.length}<span className="stat-tag">in selected pair</span></div>
           <div className="stat-foot">{summary.reported} reported in {reports[report].shortDate}<ArrowUpRight size={14} /></div>
         </button>
         <button className="stat-card" onClick={() => onFilter('normal')}>
@@ -51,6 +51,7 @@ export function RangeTrack({ marker, mode = 'compare' }: { marker: Marker; mode?
   const reading = marker[report]
   const current = exactValue(reading)
   const previous = mode === 'compare' ? exactValue(marker.earlier) : null
+  if (mode === 'compare' && unitsDiffer(marker)) return <span className="unplottable">Units differ — comparison disabled</span>
   if (current === null || !reading || reading.reference.kind !== 'numeric') {
     return <span className="unplottable">No exact numeric plot</span>
   }
@@ -78,6 +79,7 @@ export function ComparisonChart({ mode, onSelect }: { mode: ViewMode; onSelect: 
     ? ['total-cholesterol', 'ldl', 'hdl', 'triglycerides']
     : ['vitamin-d', 'vitamin-b12', 'iron', 'magnesium']
   const report = reportForMode(mode)
+  const available = ids.map(findMarker).filter((marker): marker is Marker => Boolean(marker))
   return (
     <section className="panel comparison-panel" aria-labelledby="comparison-heading">
       <div className="panel-heading">
@@ -96,19 +98,19 @@ export function ComparisonChart({ mode, onSelect }: { mode: ViewMode; onSelect: 
         <span><i className="legend-range" />{isPersonal ? 'Imported reference' : 'Illustrative range'}</span>
       </div>
       <div className="comparison-rows">
-        {ids.map((id) => {
-          const marker = findMarker(id)
+        {available.map((marker) => {
           return (
-            <button className="comparison-row" key={id} onClick={() => onSelect(marker)} aria-label={`View ${marker.name} details`}>
-              <div className="chart-marker-name"><strong>{marker.name}</strong><span>{marker.unit}</span></div>
+            <button className="comparison-row" key={marker.id} onClick={() => onSelect(marker)} aria-label={`View ${marker.name} details`}>
+              <div className="chart-marker-name"><strong>{marker.name}</strong><span>{readingUnit(marker, report)}</span></div>
               <RangeTrack marker={marker} mode={mode} />
               <div className="chart-values">
-                {mode === 'compare' && <span>{marker.earlier?.raw ?? '\u2014'} <ArrowRight size={11} /></span>}
-                <strong>{marker[report]?.raw ?? '\u2014'}</strong>
+                {mode === 'compare' && <span>{marker.earlier?.raw ?? '\u2014'} {unitsDiffer(marker) && readingUnit(marker, 'earlier')} <ArrowRight size={11} /></span>}
+                <strong>{marker[report]?.raw ?? '\u2014'} {unitsDiffer(marker) && readingUnit(marker, report)}</strong>
               </div>
             </button>
           )
         })}
+        {!available.length && <p className="empty-state">No {chart} measurements in the selected reports. Explore the available results below.</p>}
       </div>
       <div className="chart-footnote"><Info size={13} />Each row has its own scale. {mode === 'compare' ? 'Two readings, not a continuous trend.' : 'Shading shows the reported reference range.'}</div>
     </section>
@@ -116,8 +118,9 @@ export function ComparisonChart({ mode, onSelect }: { mode: ViewMode; onSelect: 
 }
 
 export function PriorityCard({ mode, onGuide, onReports }: { mode: ViewMode; onGuide: () => void; onReports: () => void }) {
-  const { findMarker, markers, reports, isPersonal } = useDataset()
+  const { findMarker, markers, reports, isPersonal, historical } = useDataset()
   const vitaminD = findMarker('vitamin-d')
+  if (!vitaminD) return <section className="priority-card"><h2>A snapshot, not a diagnosis.</h2><p>{markers.length} measurements are available in this pair. No vitamin D result is supplied for these samples.</p><button className="button light-button" onClick={onReports}>Review source context <ArrowUpRight size={16} /></button></section>
   const change = getChange(vitaminD, reports)
   if (mode === 'earlier') {
     return (
@@ -134,10 +137,10 @@ export function PriorityCard({ mode, onGuide, onReports }: { mode: ViewMode; onG
   return (
     <section className="priority-card">
       <div className="priority-art" aria-hidden="true"><Sun size={116} strokeWidth={0.7} /></div>
-      <div className="eyebrow"><span className="little-spark" />LATEST REPORT / YOUR NEXT FOCUS</div>
+      <div className="eyebrow"><span className="little-spark" />SELECTED LATER REPORT / {reports.latest.shortDate}{historical ? ' / HISTORICAL' : ''}</div>
       <h2>{needsAttention(readingStatus(vitaminD.latest)) ? 'Vitamin D, in context.' : 'A snapshot, not a diagnosis.'}</h2>
-      <div className="priority-value">{vitaminD.latest?.raw ?? '—'}<span>{vitaminD.unit}</span><StatusBadge marker={vitaminD} /></div>
-      <div className="priority-change">{change.percent !== null ? `${formatNumber(change.percent, 1)}% from ${vitaminD.earlier?.raw} ${vitaminD.unit}` : change.label}</div>
+      <div className="priority-value">{vitaminD.latest?.raw ?? '—'}<span>{readingUnit(vitaminD, 'latest')}</span><StatusBadge marker={vitaminD} /></div>
+      <div className="priority-change">{change.percent !== null ? `${formatNumber(change.percent, 1)}% from ${vitaminD.earlier?.raw} ${readingUnit(vitaminD, 'earlier')}` : change.label}</div>
       <p>{isPersonal ? 'Status follows your imported reference. A flag alone does not establish a treatment need.' : 'This fictional scenario illustrates reference-based flags.'} Do not self-dose from app results.</p>
       <button className="button light-button" onClick={needsAttention(readingStatus(vitaminD.latest)) ? onGuide : onReports}>{needsAttention(readingStatus(vitaminD.latest)) ? 'Food, habits & next steps' : 'Review source context'} <ArrowUpRight size={16} /></button>
     </section>
