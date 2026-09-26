@@ -7,13 +7,16 @@ import { reportLabel } from '../lib/history'
 import type { Marker } from '../types'
 import { RangeTrack } from './Overview'
 import { GroupIcon, MedicalNote, StatusBadge } from './ui'
+import { HistoryChart } from './HistoryChart'
+import { HistoryReadings } from './HistoryReadings'
 
 export function MarkerDetail({ marker, onClose, onGuide }: {
   marker: Marker
   onClose: () => void
   onGuide: (id: string) => void
 }) {
-  const { reports, guidance, isPersonal, historical } = useDataset()
+  const { reports, guidance, isPersonal, historical, dataset, allReports } = useDataset()
+  const history = dataset.markers.find((item) => item.id === marker.id)
   const dialogRef = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const dialog = dialogRef.current
@@ -41,7 +44,9 @@ export function MarkerDetail({ marker, onClose, onGuide }: {
         <button className="icon-button close-dialog" onClick={onClose} aria-label="Close biomarker details" autoFocus><X size={20} /></button>
       </div>
       <div className="dialog-content">
-        <p className="dialog-demo-note"><strong>{isPersonal ? 'LOCAL PERSONAL IMPORT.' : 'SYNTHETIC DEMO · NOT A MEDICAL RECORD.'}</strong> {isPersonal ? 'Read locally from your JSON. References are not independently verified; no original PDF is attached.' : 'This profile and all measurements are fictional.'}</p>
+        <p className="dialog-demo-note"><strong>{isPersonal ? 'LOCAL PERSONAL IMPORT.' : 'SYNTHETIC DEMO · NOT A MEDICAL RECORD.'}</strong> {isPersonal ? 'Read locally from your JSON. References are not independently verified; no original PDF is attached.' : 'These sample readings, dates and reference ranges are fictional.'}</p>
+        {history && <HistoryChart marker={history} reports={allReports} personal={isPersonal} />}
+        <h3>Selected two-report comparison</h3>
         <div className="detail-readings">
           {(['earlier', 'latest'] as const).map((key) => {
             const reading = marker[key]
@@ -68,12 +73,18 @@ export function MarkerDetail({ marker, onClose, onGuide }: {
           <p>{marker.note ?? 'A numerical rise or fall is not automatically better or worse. Interpret results in clinical context; this app does not diagnose health concerns.'}</p>
           {rangeChanged(marker) && <div className="range-change-callout"><Info size={16} /><span>The reference changed between reports. Each result is evaluated against its own report, not a shared cutoff.</span></div>}
         </section>
+        {history && <HistoryReadings marker={history} reports={allReports} personal={isPersonal} />}
         {plan ? <section className="detail-guidance">
           <p>Educational context for the selected later report: {reportLabel(reports.latest)}. {historical && <strong>Historical selection, not the newest report.</strong>}</p>
           <div><Leaf size={18} /><h3>Food & everyday habits</h3></div>
           <p>{plan.foods[0]}</p>
           <div><MessageCircle size={18} /><h3>A question for your clinician</h3></div>
           <p>{plan.clinician[0]}</p>
+          {!!plan.medications?.length && <section className="detail-medications">
+            <h3>Medication alternatives to discuss</h3>
+            <p>Educational alternatives only, not a prescription or instructions to take both. A clinician must confirm a deficiency or treatment need and choose an appropriate option.</p>
+            <ul>{plan.medications.map((medication) => <li key={medication.name}><strong>{medication.name}:</strong> {medication.note}</li>)}</ul>
+          </section>}
           <button className="text-button" onClick={() => { onClose(); onGuide(plan.id) }}>Read the complete guidance <ArrowRight size={15} /></button>
         </section> : <div className="no-treatment-note"><Info size={17} /><p>No corrective medicine is suggested from this result alone. Continue suitable healthy habits and discuss symptoms or concerns with a clinician.</p></div>}
         <MedicalNote compact />

@@ -1,6 +1,6 @@
 export type ReportKey = 'earlier' | 'latest'
 export type ViewMode = 'compare' | ReportKey
-export type PageId = 'overview' | 'biomarkers' | 'guide' | 'reports'
+export type PageId = 'overview' | 'biomarkers' | 'comparison' | 'guide' | 'reports'
 export type GroupId = 'heart' | 'nutrition' | 'blood' | 'liver' | 'kidney' | 'glucose' | 'thyroid' | 'urine'
 
 export interface NumericReference {
@@ -80,6 +80,7 @@ export interface Guidance {
   foods: string[]
   habits: string[]
   clinician: string[]
+  medications?: { name: string; note: string }[]
   caution: string
   sources: { title: string; url: string }[]
 }

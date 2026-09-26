@@ -4,6 +4,7 @@ import '@fontsource-variable/dm-sans'
 import App from './App'
 import { DatasetProvider } from './DatasetContext'
 import './styles.css'
+import './mobile.css'
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state: { error: Error | null } = { error: null }

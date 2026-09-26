@@ -8,7 +8,18 @@ export function buildGuidance(markers: Marker[], report: ReportMetadata, histori
   const flagged = markers.filter((marker) => needsAttention(readingStatus(marker.latest)))
   const plans = topicGuidance.flatMap((plan) => {
     const relevant = flagged.filter((marker) => plan.markerIds.includes(marker.id))
-    return relevant.length ? [{ ...plan, markerIds: relevant.map((marker) => marker.id) }] : []
+    if (!relevant.length) return []
+    if (plan.medications && !relevant.some((marker) => readingStatus(marker.latest) === 'low')) {
+      return [{
+        ...plan, markerIds: relevant.map((marker) => marker.id), medications: undefined,
+        title: `${relevant[0]!.name}: review the flagged result`,
+        foods: ['Maintain a balanced diet appropriate to your health. This is not a low result; increasing this nutrient is not a corrective food plan.'],
+        habits: ['Review the original report, current supplements, medicines and symptoms with a clinician.'],
+        clinician: ['What explains this result, and does it need confirmation? A high or boundary result must not trigger deficiency replacement.'],
+        caution: 'No replacement medication is suggested for this result. Do not start, stop or change prescribed treatment without clinical advice.',
+      }]
+    }
+    return [{ ...plan, markerIds: relevant.map((marker) => marker.id) }]
   })
   const covered = new Set(plans.flatMap((plan) => plan.markerIds))
   for (const group of groups) {

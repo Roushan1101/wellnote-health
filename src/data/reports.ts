@@ -1,6 +1,6 @@
 import type { GroupId } from '../types'
 
-export const person = { name: 'Alex Morgan (fictional)', initials: 'AM' }
+export const person = { name: 'RK', initials: 'RK' }
 
 export const reports = {
   earlier: { date: '2024-02-14', shortDate: '14 Feb 2024', fullDate: '14 February 2024', label: '14 Feb 2024' },

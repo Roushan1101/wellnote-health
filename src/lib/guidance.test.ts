@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { groups, reports } from '../data/reports'
 import { guidance as supportedGuidance } from '../data/guidance'
+import { nutrientGuidance } from '../data/nutrient-guidance'
 import type { Marker } from '../types'
 import { buildGuidance } from './guidance'
 import { displayStatus, getChange, readingStatus, readingUnit } from './results'
@@ -13,6 +14,34 @@ const example = (id = 'example-reading'): Marker => ({
 })
 
 describe('safe general review context', () => {
+  it.each(nutrientGuidance.map((plan) => plan.id))('offers three foods and two conditional alternatives for low %s only', (id) => {
+    const marker = example(id)
+    marker.latest!.reference = { kind: 'numeric', label: '>10 to 20', min: 10, minExclusive: true, max: 20 }
+    marker.latest!.raw = '5'
+    const low = buildGuidance([marker], reports.latest, true)
+    expect(low).toHaveLength(1)
+    expect(low[0]!.foods).toHaveLength(3)
+    expect(low[0]!.medications).toHaveLength(2)
+    expect(low[0]!.eyebrow).toContain('HISTORICAL')
+    expect(low[0]!.caution).not.toBe('')
+    expect(JSON.stringify(low[0]!.medications)).not.toMatch(/\b\d+\s*(?:mg|mcg|IU)\b/)
+    for (const raw of ['25', '10', '15']) {
+      marker.latest!.raw = raw
+      expect(buildGuidance([marker], reports.latest, false).every((plan) => !plan.medications)).toBe(true)
+    }
+    marker.latest!.reference = { kind: 'context', label: 'Unscored' }
+    expect(buildGuidance([marker], reports.latest, false)).toEqual([])
+    marker.latest = null
+    expect(buildGuidance([marker], reports.latest, false)).toEqual([])
+  })
+  it('does not infer nutrient replacement from low unrelated blood counts, HDL, GGT or iron indices', () => {
+    for (const id of ['hdl', 'ggt', 'haemoglobin', 'mchc', 'uibc', 'mentzer', 'potassium']) {
+      const marker = example(id)
+      marker.latest!.raw = '-1'
+      const plans = buildGuidance([marker], reports.latest, false)
+      expect(plans.every((plan) => !plan.medications)).toBe(true)
+    }
+  })
   it('covers every otherwise unsupported group flag without targeted treatment', () => {
     const rows = groups.map((group) => ({ ...example(`example-${group.id}`), group: group.id }))
     const plans = buildGuidance(rows, reports.latest, false)

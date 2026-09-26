@@ -1,0 +1,96 @@
+.medication-options { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.medication-options p { line-height: 1.7; }
+.medication-options li { margin-top: 12px; }
+
+@media screen and (max-width: 720px) {
+  body { font-size: 16px; line-height: 1.65; }
+  .demo-banner { position: relative; font-size: 14px; line-height: 1.55; padding: 14px 16px; }
+  .demo-banner strong { letter-spacing: .04em; }
+  main :is(p, li, dd, dt, label, input, select, button, td, th),
+  dialog :is(p, li, dd, dt, label, input, select, button),
+  .data-controls p, .remember-choice, .report-picker p,
+  .guidance-columns ul, .guidance-summary, .guide-intro p,
+  .marker-name-button strong, .habit-card p, .habit-card h3,
+  .detail-reading dd, .detail-meaning > p, .detail-guidance > p,
+  .source-report-card > p, .privacy-panel p, .methodology-list p {
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  .eyebrow, .page-heading .eyebrow, .section-heading .eyebrow,
+  .guidance-card-header .eyebrow, .privacy-panel .eyebrow,
+  .results-note, .results-meta, .chart-footnote, .chart-legend,
+  .summary-caption, .summary-caption > span, .summary-caption > span:last-child,
+  .summary-caption > span:first-child, .stat-top, .stat-foot, .stat-tag, .stat-trend,
+  .local-label, .breadcrumbs, .avatar, .marker-name-button small,
+  .results-table td > small, .status-badge, .status-badge.compact,
+  .reference-cell, .change-cell > span, .guidance-sources,
+  .guidance-sources > span, .guidance-sources a, .clinician-label,
+  .report-metadata dt, .coverage-grid span, .local-verified,
+  .report-label, .report-date > span, .report-date small, .app-footer,
+  .detail-value > span, .detail-reading-label, .detail-reading-title,
+  .chart-values > span, .chart-marker-name span, .no-treatment-note,
+  .filename-details summary, .filename-details code, .reading-note,
+  .source-original, .dialog-demo-note, .dialog-heading .eyebrow,
+  .detail-reading .eyebrow, .detail-change > div > span,
+  .detail-change > p > span, .chart-marker-name strong,
+  .category-chip > span, .reference-cell .range-changed,
+  .change-cell strong, .priority-change, .priority-note,
+  .priority-value > span:not(.status-badge), .priority-card .eyebrow,
+  .comparison-panel .eyebrow, .count-bubble, .unplottable,
+  .guide-intro strong, main small, dialog small {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  main h2, .panel-heading h2, .data-controls h2,
+  .section-heading h2, .guidance-card-header h2 { font-size: 24px; line-height: 1.3; }
+  main h3, dialog h3 { font-size: 19px; line-height: 1.4; }
+  .reading-value { font-size: 20px; }
+  .report-date strong { font-size: 16px; line-height: 1.6; }
+  .stat-number { font-size: 34px; }
+  .main-navigation { overflow-x: auto; gap: 8px; justify-content: flex-start; padding-bottom: 3px; }
+  .main-navigation .nav-item { min-width: max-content; flex: 0 0 auto; flex-direction: row; font-size: 16px; padding: 12px; min-height: 48px; }
+  .button, .header-actions .button, .text-button,
+  .section-heading .text-button, .category-chip, .mode-switch button,
+  .guide-topics button, .guide-sections button, .page-size select,
+  .report-source-link, .source-link, .reset-button { font-size: 16px; min-height: 44px; }
+  button, select, input:not([type="checkbox"]), .import-label { min-height: 44px; }
+  .icon-button, .print-button { min-width: 44px; min-height: 44px; }
+  .remember-choice { min-height: 44px; align-items: flex-start; }
+  .remember-choice input { width: 20px; height: 20px; flex-shrink: 0; margin-top: 4px; }
+  .search-field { min-height: 48px; }
+  .search-field input, .select-field select, .sort-field select, .pair-selectors select { font-size: 16px; }
+  .select-field, .sort-field { flex-wrap: wrap; height: auto; min-height: 48px; }
+  .select-field label { font-size: 14px; }
+  .category-slicers, .guide-topics, .guide-sections, .mode-switch { flex-wrap: wrap; }
+  .report-date-pair { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .report-date { min-width: 0; width: 100%; }
+  .date-arrow { transform: rotate(90deg); align-self: center; }
+  .report-strip-right, .summary-caption, .section-heading, .chart-legend { flex-wrap: wrap; gap: 12px; }
+  .summary-caption > span:last-child { max-width: none; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .stat-top, .stat-foot { flex-wrap: wrap; gap: 8px; }
+  .stat-card { padding: 18px; }
+  .comparison-panel { padding: 20px 16px; }
+  .comparison-panel .panel-heading { flex-wrap: wrap; }
+  .comparison-row { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+  .comparison-row .chart-marker-name { grid-column: 1; grid-row: 1; }
+  .comparison-row .chart-values { grid-column: 2; grid-row: 1; }
+  .comparison-row .range-track { grid-column: 1 / -1; grid-row: 2; }
+  .chart-values { flex-wrap: wrap; }
+  .results-table thead th { font-size: 14px; }
+  .results-table td, .results-table th { padding: 16px 14px; }
+  .results-table .marker-name-button { min-width: 170px; text-align: left; }
+  .table-pagination { flex-wrap: wrap; gap: 12px; font-size: 14px; }
+  .guidance-card, .source-report-card { padding: 20px 16px; }
+  .guidance-card-header { align-items: flex-start; }
+  .guidance-markers { flex-wrap: wrap; }
+  .guidance-markers button { max-width: 100%; flex-wrap: wrap; gap: 8px; }
+  .report-metadata > div { flex-wrap: wrap; gap: 8px; }
+  .report-metadata dd { overflow-wrap: anywhere; }
+  .detail-readings { grid-template-columns: 1fr; }
+  .detail-reading { min-width: 0; }
+  .dialog-heading h2 { font-size: 24px; }
+  .detail-reading dl > div { flex-wrap: wrap; }
+  .marker-dialog { max-width: calc(100vw - 24px); padding: 0; }
+  .guidance-sources a { display: inline-flex; align-items: center; min-height: 44px; }
+}

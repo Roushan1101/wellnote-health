@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, ExternalLink, Footprints, Heart, Leaf, MessageCircle, ShieldCheck } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, ExternalLink, Footprints, Heart, Leaf, MessageCircle, Pill, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { useDataset } from '../DatasetContext'
 import { reportLabel } from '../lib/history'
@@ -6,6 +6,12 @@ import { readingUnit } from '../lib/results'
 import { groupLabel } from '../data/reports'
 import type { Guidance, Marker } from '../types'
 import { GroupIcon, MedicalNote, StatusBadge } from './ui'
+
+const topicLabels: Record<string, string> = {
+  'vitamin-d': 'Vitamin D', 'vitamin-b12': 'Vitamin B12', iron: 'Iron',
+  magnesium: 'Magnesium', calcium: 'Calcium', heart: 'Cholesterol',
+  blood: 'Blood count', liver: 'Liver',
+}
 
 export function GuidancePreview({ onGuide }: { onGuide: (id?: string) => void }) {
   const { guidance, historical } = useDataset()
@@ -56,6 +62,11 @@ function GuidanceCard({ plan, section, onSelect }: {
           <div className="clinician-label">A DISCUSSION, NOT A PRESCRIPTION</div>
           <h3><MessageCircle size={18} />Ask your clinician</h3>
           <ul>{plan.clinician.map((item) => <li key={item}>{item}</li>)}</ul>
+          {plan.medications && <section className="medication-options" aria-label={`${plan.title}: medication discussion`}>
+            <h3><Pill size={18} />Two options to discuss, not to self-start</h3>
+            <p>A low flag is not a confirmed deficiency. These are alternatives, not a combination or a prescription. A clinician chooses whether treatment, a dose or a particular route is appropriate.</p>
+            <ul>{plan.medications.map((item) => <li key={item.name}><strong>{item.name}</strong> — {item.note}</li>)}</ul>
+          </section>}
         </div>}
       </div>
       <div className="guidance-caution"><ShieldCheck size={17} /><p>{plan.caution}</p></div>
@@ -75,7 +86,7 @@ export function CareGuide({ initialTopic, onSelect }: { initialTopic: string; on
       <div className="guide-filters">
         <div className="guide-topics" aria-label="Filter guidance by focus area">
           <button className={topic === 'all' ? 'active' : ''} onClick={() => setTopic('all')} aria-pressed={topic === 'all'}>All focus areas</button>
-          {guidance.map((plan) => <button key={plan.id} className={topic === plan.id ? 'active' : ''} onClick={() => setTopic(plan.id)} aria-pressed={topic === plan.id}><GroupIcon group={plan.group} size={15} />{plan.id.startsWith('review-') ? `${groupLabel(plan.group)} review` : plan.id === 'vitamin-d' ? 'Vitamin D' : plan.id === 'heart' ? 'Cholesterol' : plan.id === 'blood' ? 'Blood count' : 'Liver'}</button>)}
+          {guidance.map((plan) => <button key={plan.id} className={topic === plan.id ? 'active' : ''} onClick={() => setTopic(plan.id)} aria-pressed={topic === plan.id}><GroupIcon group={plan.group} size={15} />{plan.id.startsWith('review-') ? `${groupLabel(plan.group)} review` : topicLabels[plan.id] ?? plan.title}</button>)}
         </div>
         <div className="guide-sections" aria-label="Filter guidance type">
           {([{ value: 'all', label: 'Full guide' }, { value: 'everyday', label: 'Food & habits' }, { value: 'clinician', label: 'Clinician discussion' }] as const).map((item) => <button key={item.value} className={section === item.value ? 'active' : ''} onClick={() => setSection(item.value)} aria-pressed={section === item.value}>{item.label}</button>)}

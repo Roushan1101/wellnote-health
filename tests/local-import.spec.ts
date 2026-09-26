@@ -59,7 +59,7 @@ test('memory-only import updates every view without requests or persistence', as
   await expect(page.locator('a[href*=".pdf"]')).toHaveCount(0)
   expect(requests).toEqual([])
   await page.reload()
-  await expect(page.locator('.profile-info')).toContainText('Alex Morgan')
+  await expect(page.locator('.profile-info')).toContainText('RK')
   await expect(page.locator('.demo-banner')).toContainText('PUBLIC DEMO')
 })
 
@@ -70,10 +70,10 @@ test('remember requires explicit consent and clear removes saved data', async ({
   await page.reload()
   await expect(page.locator('.profile-info')).toContainText('Taylor Example')
   await page.getByRole('button', { name: 'Clear personal data / return to demo' }).click()
-  await expect(page.locator('.profile-info')).toContainText('Alex Morgan')
+  await expect(page.locator('.profile-info')).toContainText('RK')
   expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('wellnote-local-dataset:')))).toEqual([])
   await page.reload()
-  await expect(page.locator('.profile-info')).toContainText('Alex Morgan')
+  await expect(page.locator('.profile-info')).toContainText('RK')
 })
 
 test('loading without remember also removes a previously saved dataset', async ({ page }) => {
@@ -84,7 +84,7 @@ test('loading without remember also removes a previously saved dataset', async (
   await importJson(page, importedFixture())
   await expect(page.locator('.data-controls')).toContainText('memory only')
   await page.reload()
-  await expect(page.locator('.profile-info')).toContainText('Alex Morgan')
+  await expect(page.locator('.profile-info')).toContainText('RK')
 })
 
 test('invalid input is actionable and preserves the current dataset', async ({ page }) => {
@@ -150,7 +150,7 @@ test('production CSP blocks connection requests and renders imported text safely
 test('invalid saved data fails closed to demo with recovery advice', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem(`wellnote-local-dataset:v1:${location.pathname}`, '{"schemaVersion":99}'))
   await page.reload()
-  await expect(page.locator('.profile-info')).toContainText('Alex Morgan')
+  await expect(page.locator('.profile-info')).toContainText('RK')
   await expect(page.getByRole('alert')).toContainText('Saved browser data could not be loaded')
   await page.getByRole('button', { name: 'Clear personal data / return to demo' }).click()
   await expect(page.getByRole('alert')).toHaveCount(0)
@@ -161,7 +161,7 @@ test('storage failures are explained and memory-only import remains available', 
   await page.getByRole('checkbox', { name: /Remember the next import/ }).check()
   await importJson(page, importedFixture())
   await expect(page.getByRole('alert')).toContainText('Browser storage could not be updated')
-  await expect(page.locator('.profile-info')).toContainText('Alex Morgan')
+  await expect(page.locator('.profile-info')).toContainText('RK')
   await page.getByRole('checkbox', { name: /Remember the next import/ }).uncheck()
   await importJson(page, importedFixture())
   await expect(page.locator('.profile-info')).toContainText('Taylor Example')

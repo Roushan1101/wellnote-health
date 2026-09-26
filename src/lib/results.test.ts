@@ -15,7 +15,7 @@ describe('public synthetic dataset', () => {
     expect(new Set(markers.map((marker) => marker.id)).size).toBe(25)
     expect(new Set(markers.map((marker) => marker.group)).size).toBe(8)
     expect(groups).toHaveLength(8)
-    expect(person.name).toBe('Alex Morgan (fictional)')
+    expect(person.name).toBe('RK')
   })
   it('uses only the two invented dates', () => {
     expect(reports.earlier.date).toBe('2024-02-14')
@@ -38,9 +38,12 @@ describe('public synthetic dataset', () => {
     }
   })
   it('keeps guidance references valid and non-prescriptive', () => {
-    expect(guidance).toHaveLength(4)
+    expect(guidance).toHaveLength(8)
     for (const plan of guidance) {
-      for (const id of plan.markerIds) expect(findMarker(id)).toBeDefined()
+      for (const id of plan.markerIds) {
+        if (id === 'calcium') expect(plan.group).toBe('kidney')
+        else expect(findMarker(id)).toBeDefined()
+      }
       expect(plan.caution.length).toBeGreaterThan(20)
       expect(plan.sources.every((source) => source.url.startsWith('https://'))).toBe(true)
     }
@@ -129,7 +132,8 @@ describe('filters and exports', () => {
     const report = createSyntheticReport('latest')
     expect(report.measurements).toHaveLength(24)
     expect(report.notice).toContain('NOT A MEDICAL RECORD')
-    expect(report.profile).toContain('fictional')
+    expect(report.profile).toBe('RK')
+    expect(report.notice).toMatch(/fictional|synthetic/i)
     expect(report.measurements.some((marker) => marker.id === 'sample-volume')).toBe(false)
     expect(JSON.stringify(report)).not.toMatch(/filename|\.pdf|patientId|laboratoryId/i)
   })

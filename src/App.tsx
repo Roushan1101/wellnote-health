@@ -12,14 +12,17 @@ import { ResultsExplorer } from './components/ResultsExplorer'
 import { MedicalNote } from './components/ui'
 import { DataControls } from './components/DataControls'
 import { ReportPicker } from './components/ReportPicker'
+import { HistoryOverview } from './components/HistoryOverview'
+import { AllReportsComparison } from './components/AllReportsComparison'
 import { useDataset } from './DatasetContext'
 import { collectionLabel } from './lib/history'
 import { createCsv, defaultFilters, filterMarkers } from './lib/results'
-import type { Filters, Marker, PageId, StatusFilter, TrendFilter, ViewMode } from './types'
+import type { Filters, HistoryMarker, Marker, PageId, StatusFilter, TrendFilter, ViewMode } from './types'
 
 const navigation = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'biomarkers', label: 'Biomarkers', icon: ListFilter },
+  { id: 'comparison', label: 'Comparison', icon: CalendarDays },
   { id: 'guide', label: 'Your next steps', icon: Heart },
   { id: 'reports', label: 'Source reports', icon: FileText },
 ] satisfies { id: PageId; label: string; icon: typeof Heart }[]
@@ -30,8 +33,9 @@ function pageFromHash(): PageId {
 }
 
 const pageContent: Record<PageId, { eyebrow: string; title: string; description: string }> = {
-  overview: { eyebrow: 'WELCOME TO A FICTIONAL HEALTH JOURNAL', title: 'Your health, in perspective.', description: 'Explore fictional samples across collection dates. Choose any two to compare.' },
+  overview: { eyebrow: 'WELCOME TO THE DEMO HEALTH JOURNAL', title: 'Your health, in perspective.', description: 'Explore fictional samples across collection dates. Choose any two to compare.' },
   biomarkers: { eyebrow: 'LESS JARGON. MORE UNDERSTANDING.', title: 'Meet your biomarkers.', description: 'Compare every measurement, find a pattern, and go a little deeper.' },
+  comparison: { eyebrow: 'EVERY SAMPLE. EVERY SOURCE REFERENCE.', title: 'Compare the whole history.', description: 'All reports side by side, ordered by sample collection date. Each result keeps its own unit and reference.' },
   guide: { eyebrow: 'INFORMED CONVERSATIONS. SMALL, MEANINGFUL STEPS.', title: 'A thoughtful way forward.', description: 'Food, everyday habits and the right questions for your clinician.' },
   reports: { eyebrow: 'SYNTHETIC DATA. TRANSPARENT PROVENANCE.', title: 'The story starts here.', description: 'All fictional report summaries. No original lab documents are attached.' },
 }
@@ -83,6 +87,14 @@ function Dashboard() {
     navigate('guide')
   }
 
+  const openHistoryMarker = ({ readings, ...marker }: HistoryMarker) => {
+    setSelected({
+      ...marker,
+      earlier: readings[reports.earlier.id!] ?? null,
+      latest: readings[reports.latest.id!] ?? null,
+    })
+  }
+
   const changeMode = (next: ViewMode) => {
     setMode(next)
     if (next !== 'compare') setFilters((current) => ({
@@ -130,7 +142,7 @@ function Dashboard() {
         event.preventDefault()
         document.getElementById('main-content')?.focus()
       }}>Skip to content</a>
-      <div className="demo-banner" role="note"><strong>{isPersonal ? 'PERSONAL DATA · LOCAL TO THIS BROWSER' : 'PUBLIC DEMO · NOT A MEDICAL RECORD'}</strong><span>{isPersonal ? 'Imported locally, not uploaded. App flags are not a diagnosis or prescription.' : 'Alex Morgan is fictional. All results, dates and references are invented illustrations.'}</span></div>
+      <div className="demo-banner" role="note"><strong>{isPersonal ? 'PERSONAL DATA · LOCAL TO THIS BROWSER' : 'PUBLIC DEMO · NOT A MEDICAL RECORD'}</strong><span>{isPersonal ? 'Imported locally, not uploaded. App flags are not a diagnosis or prescription.' : 'These sample readings, dates and references are fictional. Load your health data to see your own results.'}</span></div>
       <div className="app-shell">
         <aside className="sidebar">
           <button className="brand" onClick={() => navigate('overview')} aria-label="Wellnote home"><span className="brand-mark"><Activity size={24} strokeWidth={1.8} /></span><span>wellnote<span className="brand-period">.</span></span></button>
@@ -151,14 +163,14 @@ function Dashboard() {
         <div className="main-shell">
           <header className="topbar">
             <div className="breadcrumbs"><span>My health</span><ChevronRight size={13} /><strong>{navigation.find((item) => item.id === page)?.label}</strong></div>
-            <div className="topbar-right"><span className="local-label"><span />{isPersonal ? 'Local import' : 'Public demo'}</span><div className="profile-divider" /><div className="profile-info"><strong>{person.name}</strong><span>{isPersonal ? 'Personal' : 'Fictional'} health journal</span></div><div className="avatar" aria-label={person.name}>{person.initials}</div></div>
+            <div className="topbar-right"><span className="local-label"><span />{isPersonal ? 'Local import' : 'Public demo'}</span><div className="profile-divider" /><div className="profile-info"><strong>{person.name}</strong><span>{isPersonal ? 'Personal health journal' : 'Demo illustrations'}</span></div><div className="avatar" aria-label={person.name}>{person.initials}</div></div>
           </header>
           <main id="main-content" tabIndex={-1}>
             <DataControls />
-            <ReportPicker onPair={changePair} onSnapshot={snapshot} />
+            {page !== 'comparison' && <ReportPicker onPair={changePair} onSnapshot={snapshot} />}
             <section className="page-heading">
               <div><div className="eyebrow">{content.eyebrow}</div><h1>{content.title}</h1><p>{content.description}</p></div>
-              <div className="header-actions"><button className="icon-button print-button" aria-label="Print filtered report" title="Print filtered report" onClick={() => window.print()}><Printer size={18} /></button><button className="button primary-button export-button" disabled={filtered.length === 0} onClick={exportCsv}><Download size={16} /><span>Export comparison</span></button></div>
+              {page !== 'comparison' && <div className="header-actions"><button className="icon-button print-button" aria-label="Print filtered report" title="Print filtered report" onClick={() => window.print()}><Printer size={18} /></button><button className="button primary-button export-button" disabled={filtered.length === 0} onClick={exportCsv}><Download size={16} /><span>Export comparison</span></button></div>}
             </section>
             {(page === 'overview' || page === 'biomarkers') && <>
               <section className="report-strip" aria-label="Report dates and viewing mode">
@@ -168,18 +180,20 @@ function Dashboard() {
               {page === 'overview' && <>
                 <SummaryStats mode={mode} onFilter={focusFilter} />
                 <div className="insights-grid"><ComparisonChart mode={mode} onSelect={setSelected} /><PriorityCard mode={mode} onGuide={() => showGuide('vitamin-d')} onReports={() => navigate('reports')} /></div>
+                <HistoryOverview onOpen={openHistoryMarker} />
               </>}
               <ResultsExplorer allMarkers={markers} filtered={filtered} filters={filters} mode={mode} expanded={page === 'biomarkers'} onFilters={setFilters} onSelect={setSelected} onExpand={() => navigate('biomarkers')} />
               {page === 'overview' && <GuidancePreview onGuide={showGuide} />}
               <MedicalNote compact />
             </>}
             {page === 'guide' && <CareGuide key={guideTopic} initialTopic={guideTopic} onSelect={setSelected} />}
+            {page === 'comparison' && <AllReportsComparison onOpen={openHistoryMarker} />}
             {page === 'reports' && <ReportsPage />}
             <footer className="app-footer"><span><Activity size={15} />wellnote<span className="footer-divider">/</span>A little clarity goes a long way.</span><span><LockKeyhole size={12} />{isPersonal ? 'Personal data stays in this browser.' : 'Synthetic data only.'} No uploads.</span></footer>
           </main>
         </div>
       </div>
-      <PrintReport rows={filtered} mode={mode} />
+      {page !== 'comparison' && <PrintReport rows={filtered} mode={mode} />}
       {selected && <MarkerDetail marker={selected} onClose={() => setSelected(null)} onGuide={showGuide} />}
       <div className="toast-container" role="status" aria-live="polite">{toast && <div className="toast"><Check size={18} /><span>{toast}</span><button className="icon-button" aria-label="Dismiss notification" onClick={() => setToast('')}><X size={15} /></button></div>}</div>
     </>

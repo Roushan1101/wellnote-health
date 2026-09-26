@@ -13,7 +13,7 @@ test('overview has permanent synthetic identity and no external background reque
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Your health, in perspective.' })).toBeVisible()
   await expect(page.locator('.demo-banner')).toContainText('NOT A MEDICAL RECORD')
-  await expect(page.locator('.profile-info')).toContainText('Alex Morgan (fictional)')
+  await expect(page.locator('.profile-info')).toContainText('RK')
   await expect(page.locator('.results-meta')).toContainText('25 of 25')
   await page.locator('.app-footer').scrollIntoViewIfNeeded()
   await expect(page.locator('.demo-banner')).toBeInViewport()

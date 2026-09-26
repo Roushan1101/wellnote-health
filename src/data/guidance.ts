@@ -1,22 +1,8 @@
 import type { Guidance } from '../types'
+import { nutrientGuidance } from './nutrient-guidance'
 
 export const guidance: Guidance[] = [
-  {
-    id: 'vitamin-d', group: 'nutrition', title: 'A conversation about vitamin D',
-    eyebrow: 'FICTIONAL SCENARIO / NUTRITION', markerIds: ['vitamin-d', 'vitamin-b12'],
-    summary: 'This synthetic example shows a low vitamin D flag and a changed B12 reference range. It does not describe a real person or establish a treatment need.',
-    foods: [
-      'A varied diet can include fortified foods and sources such as eggs or oily fish, where suitable. Check labels: not every milk or plant drink contains added vitamin D.',
-      'Vitamin B12 has different dietary sources and treatment needs. Discuss restricted diets or absorption concerns rather than assuming any vitamin supplement will address either result.',
-    ],
-    habits: ['Discuss nutrition, lifestyle and relevant symptoms with a qualified clinician. Avoid unsafe sun exposure.'],
-    clinician: [
-      'How should a result be interpreted alongside history, symptoms and the test method? Would follow-up testing be useful?',
-      'If vitamin D deficiency is clinically confirmed, ask about vitamin D3 (cholecalciferol) or D2 replacement and appropriate monitoring. A clinician should choose the dose and duration; a high vitamin D result must not prompt more supplementation.',
-    ],
-    caution: 'Do not choose supplements or doses from app flags. Excess vitamin D can raise calcium and harm the kidneys. A clinician should assess individual needs.',
-    sources: [{ title: 'NIH: Vitamin D', url: 'https://ods.od.nih.gov/factsheets/VitaminD-Consumer/' }],
-  },
+  ...nutrientGuidance,
   {
     id: 'heart', group: 'heart', title: 'Put cholesterol in context',
     eyebrow: 'FICTIONAL SCENARIO / HEART', markerIds: ['total-cholesterol', 'ldl', 'hdl', 'non-hdl', 'hdl-ldl-ratio', 'triglycerides'],
