@@ -2,6 +2,8 @@
 
 A React + TypeScript + Vite health journal with **four entirely fictional reports** as its public default and the display name **RK**. Every bundled reading, sample date, reference and laboratory label is an invented illustration, not RK's actual medical history. No patient reports or medical PDFs belong in this repository.
 
+The interface uses a pink/peach palette, with rose accents and warm backgrounds. Distinct status labels and icons accompany colors so the palette is not the only way to understand a result.
+
 The hosted app can read a personal **JSON export locally in the browser**. It does not upload the file. Flags and educational topics are not diagnoses, prescriptions, medication doses or a health score.
 
 ## Compare a history, not just two fixed files
@@ -40,6 +42,8 @@ The hosted app can read a personal **JSON export locally in the browser**. It do
 4. **Remember the next import** is off by default. Without consent, the data lives only in page memory; reload/close restores the demo.
 5. If explicitly enabled before import, the data is saved in this browser's unencrypted `localStorage`. Existing version-1 saved data is validated and migrated when read. The storage key remains path-scoped and backward compatible.
 6. **Clear personal data / return to demo** removes the app's saved and in-memory data. Loading another file without Remember also removes the previous saved copy. Clearing does not delete original files or previous downloads.
+
+When a source collection date is clarified, update `date` and `collectionDate` together in the local export and record the clarification in that report's `note`. Re-import the corrected file: deploying new app code does not replace an older browser-saved dataset. All date labels, chart positions, comparisons and exports are derived from the imported date rather than a PDF filename or a guessed day/month format.
 
 Storage failures are explained rather than silently claiming a save/clear succeeded. Browser storage is **not encrypted** and can be read by other code on the same origin, including other repository sites on the same GitHub Pages hostname. Path scoping avoids accidental mixing, not malicious access. Avoid shared devices and use trusted browsers/hosting.
 
