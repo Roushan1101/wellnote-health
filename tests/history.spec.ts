@@ -3,11 +3,10 @@ import { demoDataset } from '../src/data/history'
 import { projectDataset } from '../src/lib/history'
 import { markers } from '../src/data/markers'
 import { person, reports } from '../src/data/reports'
+import { importJson, openSettings, selectPair } from './helpers'
 
 async function importData(page: Page, dataset: unknown) {
-  await page.getByLabel('Load my health data', { exact: true }).setInputFiles({
-    name: 'fictional-history.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(dataset)),
-  })
+  await importJson(page, dataset, 'fictional-history.json')
 }
 
 test.beforeEach(async ({ page }) => { await page.goto('./') })
@@ -17,8 +16,7 @@ for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
     const before = demoDataset.reports[a]!
     const after = demoDataset.reports[b]!
     const expected = projectDataset(demoDataset, before.id, after.id)
-    await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption(after.id)
-    await page.getByRole('combobox', { name: 'Before report', exact: true }).selectOption(before.id)
+    await selectPair(page, before.id, after.id)
     await expect(page.locator('.results-meta')).toContainText(`${expected.markers.length} of ${expected.markers.length}`)
     await expect(page.locator('.results-table thead')).toContainText(before.id)
     await expect(page.locator('.results-table thead')).toContainText(after.id)
@@ -32,7 +30,7 @@ for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
 }
 
 test('reorders reversed pair choices and snapshots every report', async ({ page }) => {
-  await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption('demo-spring')
+  await selectPair(page, undefined, 'demo-spring')
   await page.getByRole('combobox', { name: 'Before report', exact: true }).selectOption('demo-latest')
   await expect(page.getByRole('combobox', { name: 'Before report', exact: true })).toHaveValue('demo-spring')
   await expect(page.getByRole('combobox', { name: 'After report', exact: true })).toHaveValue('demo-latest')
@@ -44,7 +42,8 @@ test('reorders reversed pair choices and snapshots every report', async ({ page 
 })
 
 test('unit mismatches disable changes/charts and preserve normalized-source provenance', async ({ page }) => {
-  await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption('demo-spring')
+  await selectPair(page, undefined, 'demo-spring')
+  await page.getByRole('navigation').getByRole('button', { name: 'Overview', exact: true }).click()
   await page.getByRole('button', { name: 'Nutrients', exact: true }).click()
   await expect(page.locator('.comparison-rows')).toContainText('Units differ')
   await page.getByRole('textbox', { name: 'Search biomarkers' }).fill('iron')
@@ -54,7 +53,7 @@ test('unit mismatches disable changes/charts and preserve normalized-source prov
   await page.getByRole('button', { name: 'Details for Serum iron' }).click()
   await expect(page.getByRole('dialog')).toContainText('Comparison disabled; no automatic unit conversion')
   await page.getByRole('button', { name: 'Close biomarker details' }).click()
-  await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption('demo-autumn')
+  await selectPair(page, undefined, 'demo-autumn')
   await page.getByRole('textbox', { name: 'Search biomarkers' }).fill('platelets')
   await page.getByRole('button', { name: 'Details for Platelets' }).click()
   await expect(page.locator('.source-original')).toContainText('2.4 10⁵/µL')
@@ -69,11 +68,12 @@ test('sparse history without chart IDs has usable empty states and excludes abse
     readings: { 'demo-spring': { raw: '2', sourceLabel: 'Synthetic sparse test', reference: { kind: 'numeric', label: '1–3', min: 1, max: 3 } } },
   }]
   await importData(page, data)
-  await expect(page.locator('.report-picker')).toContainText('1 of 1 measurements are unavailable')
   await expect(page.locator('.comparison-panel')).toContainText('No lipids measurements')
   await expect(page.getByRole('heading', { name: 'No matching biomarkers' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Export comparison' })).toBeDisabled()
-  await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption('demo-spring')
+  await selectPair(page)
+  await expect(page.locator('.report-picker')).toContainText('1 of 1 measurements are unavailable')
+  await selectPair(page, undefined, 'demo-spring')
   await expect(page.locator('.results-table tbody tr')).toHaveCount(1)
   await page.getByRole('button', { name: 'Details for Custom example' }).click()
   await expect(page.getByRole('dialog')).toContainText('Not reported')
@@ -86,7 +86,7 @@ test('same-day labs retain separate IDs and sampling time, not reported dates', 
   data.reports[1]!.reportedDate = '2024-02-18'
   data.reports[1]!.label = 'Old label must not control timeline'
   await importData(page, data)
-  await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption('demo-spring')
+  await selectPair(page, undefined, 'demo-spring')
   await expect(page.locator('.report-date-pair')).toContainText('Collected 14 Feb 2024 · 11:20 AM')
   await expect(page.locator('.report-date-pair')).not.toContainText('18 Feb')
   await expect(page.locator('.results-table thead')).toContainText('demo-baseline')
@@ -98,8 +98,7 @@ test('same-day labs retain separate IDs and sampling time, not reported dates', 
 })
 
 test('CSV and print identify the selected collection-date pair and historical guidance', async ({ page }) => {
-  await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption('demo-autumn')
-  await page.getByRole('combobox', { name: 'Before report', exact: true }).selectOption('demo-spring')
+  await selectPair(page, 'demo-spring', 'demo-autumn')
   await page.getByRole('textbox', { name: 'Search biomarkers' }).fill('iron')
   const pending = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export comparison' }).click()
@@ -123,15 +122,18 @@ test('legacy browser storage migrates without claiming collection dates', async 
   await page.evaluate((data) => localStorage.setItem(`wellnote-local-dataset:v1:${location.pathname}`, JSON.stringify(data)),
     { schemaVersion: 1, person, reports, markers })
   await page.reload()
-  await expect(page.locator('.demo-banner')).toContainText('PERSONAL DATA')
-  await expect(page.locator('.report-picker')).toContainText('2 reports')
+  await expect(page.locator('.local-label')).toHaveText('Local import')
+  await selectPair(page)
+  await expect(page.getByRole('combobox', { name: 'After report', exact: true }).locator('option')).toHaveCount(2)
   await expect(page.locator('.report-date-pair')).toContainText('Collection date not supplied; legacy report date')
+  await openSettings(page)
   await page.getByRole('button', { name: 'Clear personal data / return to demo' }).click()
-  await expect(page.locator('.report-picker')).toContainText('4 reports')
+  await expect(page.getByRole('combobox', { name: 'After report', exact: true }).locator('option')).toHaveCount(4)
 })
 
-test('mobile has keyboard-accessible pair selectors and all timeline snapshots', async ({ page }) => {
+test('mobile has keyboard-accessible pair selectors covering all reports', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
+  await selectPair(page)
   const after = page.getByRole('combobox', { name: 'After report', exact: true })
   await after.scrollIntoViewIfNeeded()
   await expect(after).toBeVisible()
@@ -140,10 +142,7 @@ test('mobile has keyboard-accessible pair selectors and all timeline snapshots',
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   await expect(after).not.toHaveValue('demo-latest')
-  const last = page.getByRole('button', { name: /^Open snapshot .*demo-latest$/ })
-  await last.scrollIntoViewIfNeeded()
-  await last.focus()
-  await page.keyboard.press('Enter')
+  await after.selectOption('demo-latest')
   await expect(page.locator('.results-table thead')).toContainText('demo-latest')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
@@ -157,7 +156,7 @@ test('malformed history report IDs and unknown readings are actionable', async (
   unknown.markers[0]!.readings['unknown-report'] = null
   await importData(page, unknown)
   await expect(page.getByRole('alert')).toContainText('unsupported field')
-  await expect(page.locator('.demo-banner')).toContainText('PUBLIC DEMO')
+  await expect(page.locator('.local-label')).toHaveText('Sample data')
 })
 
 test('unsupported flags and supplied report notes receive visible non-prescriptive review context', async ({ page }) => {

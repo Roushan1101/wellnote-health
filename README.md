@@ -2,14 +2,14 @@
 
 A React + TypeScript + Vite health journal with **four entirely fictional reports** as its public default and the display name **RK**. Every bundled reading, sample date, reference and laboratory label is an invented illustration, not RK's actual medical history. No patient reports or medical PDFs belong in this repository.
 
-The interface uses a pink/peach palette, with rose accents and warm backgrounds. Distinct status labels and icons accompany colors so the palette is not the only way to understand a result.
+The interface uses charcoal headings and slate body text, with pink/peach reserved for accents and warm backgrounds. Distinct status labels and icons accompany colors so the palette is not the only way to understand a result. The dashboard opens directly on the reports without a top demo banner, import panel or large report-picker introduction. A compact profile indicator distinguishes sample data from local records.
 
 The hosted app can read a personal **JSON export locally in the browser**. It does not upload the file. Flags and educational topics are not diagnoses, prescriptions, medication doses or a health score.
 
 ## Compare a history, not just two fixed files
 
 - The demo contains 25 markers across eight categories and four fictional collection dates: 14 February, 14 June and 14 October 2024, and 14 February 2025.
-- All reports appear on the timeline and source-summary page. Accessible Before/After selectors and a visible mobile timeline select any two reports or a single-report snapshot.
+- All reports appear in history charts, the Comparison page and source summaries. Compact Before/After controls on Biomarkers select a pair; the large four-report perspective panel is no longer on Overview. The desktop sidebar retains collection-date snapshot links.
 - The default comparison is the earliest and newest report. Reversed choices are automatically ordered by date. Same-day samples stay distinct by report ID; ID ordering is a deterministic tie-break, **not an inferred sampling order**.
 - The original pair table, summary cards and pair exports follow the selected Before/After reports. Rows unavailable in both are excluded and counted separately. History charts and the **Comparison** page deliberately include the full history independently of that pair.
 - Educational topics follow supported flags in the selected later report, with an explicit warning when that selection is historical rather than the newest report. Otherwise unsupported flags receive generic group-level review context, never an automatic treatment or iron recommendation.
@@ -37,11 +37,11 @@ The hosted app can read a personal **JSON export locally in the browser**. It do
 ## Load personal data without publishing it
 
 1. Prepare a Wellnote version 2 JSON export **outside this repository**. Version 1 two-report exports remain accepted and are migrated in memory.
-2. Choose **Load my health data** on the website. Files must be `.json`, no larger than 2 MiB. PDFs are not supported.
+2. Open **Settings**, then choose **Load my health data**. Import and browser-storage controls live in Settings rather than taking up dashboard space. Files must be `.json`, no larger than 2 MiB. PDFs are not supported.
 3. The app reads the chosen file using `File.text()` and validates it before updating the dashboard. Invalid input leaves the current dataset intact and shows an actionable field-specific error.
 4. **Remember the next import** is off by default. Without consent, the data lives only in page memory; reload/close restores the demo.
 5. If explicitly enabled before import, the data is saved in this browser's unencrypted `localStorage`. Existing version-1 saved data is validated and migrated when read. The storage key remains path-scoped and backward compatible.
-6. **Clear personal data / return to demo** removes the app's saved and in-memory data. Loading another file without Remember also removes the previous saved copy. Clearing does not delete original files or previous downloads.
+6. **Clear personal data / return to demo** in Settings removes the app's saved and in-memory data. Loading another file without Remember also removes the previous saved copy. Clearing does not delete original files or previous downloads.
 
 When a source collection date is clarified, update `date` and `collectionDate` together in the local export and record the clarification in that report's `note`. Re-import the corrected file: deploying new app code does not replace an older browser-saved dataset. All date labels, chart positions, comparisons and exports are derived from the imported date rather than a PDF filename or a guessed day/month format.
 

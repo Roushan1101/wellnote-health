@@ -1,11 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import { demoDataset } from '../src/data/history'
 import type { Dataset, HistoryMarker } from '../src/types'
+import { importJson, selectPair } from './helpers'
 
 async function importHistory(page: Page, data: Dataset) {
-  await page.getByLabel('Load my health data', { exact: true }).setInputFiles({
-    name: 'fictional-chart-history.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(data)),
-  })
+  await importJson(page, data, 'fictional-chart-history.json')
 }
 
 const fixture = (): Dataset => {
@@ -28,7 +27,7 @@ const fixture = (): Dataset => {
 test.beforeEach(async ({ page }) => { await page.goto('./') })
 
 test('overview line chart spans all four reports and point activation opens complete detail', async ({ page }) => {
-  await expect(page.locator('.demo-banner')).toContainText('These sample readings, dates and references are fictional. Load your health data to see your own results.')
+  await expect(page.locator('.local-label')).toHaveText('Sample data')
   await expect(page.locator('.profile-info')).toContainText('Demo illustrations')
   await expect(page.locator('.history-overview-panel')).toContainText('4 reports')
   await expect(page.locator('.history-overview-panel [data-history-point]')).toHaveCount(4)
@@ -43,7 +42,7 @@ test('overview line chart spans all four reports and point activation opens comp
 })
 
 test('Comparison navigation shows all four columns independent of the chosen pair', async ({ page }) => {
-  await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption('demo-spring')
+  await selectPair(page, undefined, 'demo-spring')
   await page.getByRole('navigation').getByRole('button', { name: 'Comparison', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Compare the whole history.' })).toBeVisible()
   await expect(page.locator('[data-comparison-report]')).toHaveCount(4)
@@ -232,8 +231,9 @@ test('print and detail use dynamically gated nutrient alternatives, never stale 
   await page.emulateMedia({ media: 'screen' })
 
   for (const reportId of ['demo-spring', 'demo-autumn']) {
-    await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption(reportId)
+    await selectPair(page, undefined, reportId)
     await expect(page.locator('.print-medications')).toHaveCount(0)
+    await page.getByRole('navigation').getByRole('button', { name: 'Overview', exact: true }).click()
     await page.getByRole('button', { name: 'Open Fictional nutrient marker full history' }).click()
     await expect(page.getByRole('dialog').locator('.detail-medications')).toHaveCount(0)
     await page.getByRole('button', { name: 'Close biomarker details' }).click()

@@ -1,12 +1,13 @@
 import { expect, test, type Locator } from '@playwright/test'
 import { demoDataset } from '../src/data/history'
+import { importJson } from './helpers'
 
 const palette = {
   brand: 'rgb(139, 63, 88)',
   hover: 'rgb(119, 51, 74)',
   dark: 'rgb(113, 48, 71)',
-  ink: 'rgb(73, 52, 58)',
-  muted: 'rgb(118, 93, 100)',
+  ink: 'rgb(32, 38, 47)',
+  muted: 'rgb(89, 98, 112)',
   canvas: 'rgb(255, 248, 245)',
   rose: 'rgb(248, 228, 232)',
   peach: 'rgb(251, 232, 221)',
@@ -43,20 +44,27 @@ async function readable(locator: Locator, background: Locator = locator) {
 
 test.beforeEach(async ({ page }) => { await page.goto('./') })
 
-test('rose branding and peach surfaces agree with browser chrome and favicon', async ({ page, request }) => {
+test('neutral typography and peach accents replace the large banners', async ({ page, request }) => {
   await expect(page.locator('html')).toHaveCSS('background-color', palette.canvas)
   await expect(page.locator('body')).toHaveCSS('color', palette.ink)
-  await expect(page.locator('.demo-banner')).toHaveCSS('background-color', palette.brand)
+  await expect(page.locator('.demo-banner')).toHaveCount(0)
+  await expect(page.locator('main .data-controls')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: /reports. Choose your perspective/ })).toHaveCount(0)
   await expect(page.locator('.sidebar')).toHaveCSS('background-color', palette.peach)
-  await expect(page.locator('.data-controls')).toHaveCSS('border-top-color', palette.line)
+  await expect(page.locator('.panel').first()).toHaveCSS('border-top-color', palette.line)
   await expect(page.locator('.panel').first()).toHaveCSS('background-color', palette.white)
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#8b3f58')
   const favicon = await request.get('./favicon.svg')
   expect(favicon.ok()).toBe(true)
   expect(await favicon.text()).toContain('fill="#8b3f58"')
   expect(await favicon.text()).toContain('stroke="#fbe8dd"')
-  await readable(page.locator('.demo-banner strong'), page.locator('.demo-banner'))
-  await readable(page.locator('.demo-banner span').first(), page.locator('.demo-banner'))
+  await expect(page.locator('.page-heading h1')).toHaveCSS('color', palette.ink)
+  await expect(page.locator('.timeline-entry strong').first()).toHaveCSS('color', palette.ink)
+  await expect(page.locator('.history-chart-note').first()).toHaveCSS('color', palette.muted)
+  await expect(page.locator('.results-note')).toHaveCSS('color', palette.muted)
+  await expect(page.locator('.sidebar')).toHaveCSS('top', '0px')
+  await readable(page.locator('.page-heading h1'), page.locator('html'))
+  await readable(page.locator('.history-chart-note').first(), page.locator('.history-overview-panel'))
   await readable(page.locator('.nav-item.active'))
   await readable(page.locator('.nav-item:not(.active)').first(), page.locator('.sidebar'))
 })
@@ -91,9 +99,8 @@ test('history and comparison plots use rose measurements and peach reference ban
       reference: { kind: 'numeric', min: 0, max: 8, label: '0–8 (invented reference)' },
     }])),
   })
-  await page.getByLabel('Load my health data', { exact: true }).setInputFiles({
-    name: 'fictional-theme-colors.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(fixture)),
-  })
+  await importJson(page, fixture, 'fictional-theme-colors.json')
+  await expect(page.locator('.local-label')).toHaveText('Local import')
   await page.getByRole('combobox', { name: 'Trend biomarker', exact: true }).selectOption('theme-chart')
   const chart = page.locator('.history-overview-panel')
   const line = chart.locator('.history-value-line').first()
@@ -143,11 +150,12 @@ for (const width of [320, 390, 720]) {
     await page.setViewportSize({ width, height: 844 })
     const nav = page.locator('.nav-item.active')
     await expect(nav).toHaveCSS('background-color', palette.canvas)
-    await expect(nav).toHaveCSS('color', palette.brand)
+    await expect(nav).toHaveCSS('color', palette.ink)
     await expect(page.locator('.sidebar')).toHaveCSS('background-color', palette.peach)
     await readable(nav)
     await readable(page.locator('.nav-item:not(.active)').first(), page.locator('.sidebar'))
-    await readable(page.locator('.demo-banner span').first(), page.locator('.demo-banner'))
+    await expect(page.locator('.demo-banner')).toHaveCount(0)
+    await expect(page.locator('.page-heading h1')).toHaveCSS('color', palette.ink)
     await readable(page.getByRole('button', { name: 'Export comparison', exact: true }))
     await expect(page.locator('.history-overview-panel .history-value-line').first()).toHaveCSS('stroke', palette.brand)
     expect(contrast(palette.brand, palette.reference)).toBeGreaterThanOrEqual(3)

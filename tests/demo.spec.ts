@@ -12,11 +12,12 @@ test('overview has permanent synthetic identity and no external background reque
   })
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Your health, in perspective.' })).toBeVisible()
-  await expect(page.locator('.demo-banner')).toContainText('NOT A MEDICAL RECORD')
+  await expect(page.locator('.local-label')).toHaveText('Sample data')
+  await expect(page.locator('.demo-banner')).toHaveCount(0)
   await expect(page.locator('.profile-info')).toContainText('RK')
   await expect(page.locator('.results-meta')).toContainText('25 of 25')
   await page.locator('.app-footer').scrollIntoViewIfNeeded()
-  await expect(page.locator('.demo-banner')).toBeInViewport()
+  await expect(page.locator('.app-footer')).toContainText('Synthetic data only')
   expect(external).toEqual([])
 })
 
@@ -128,7 +129,7 @@ test('print view is filtered, dated correctly and clearly fictional', async ({ p
 
 test('mobile layout stays within viewport with a visible demo notice', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(page.locator('.demo-banner')).toBeInViewport()
+  await expect(page.locator('.local-label')).toBeInViewport()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.getByRole('button', { name: 'Biomarkers', exact: true }).click()
   await page.getByRole('textbox', { name: 'Search biomarkers' }).fill('vitamin')
@@ -171,7 +172,7 @@ test('production app loads and reloads below a repository subpath', async ({ pag
     await page.reload()
     await expect(page.getByRole('heading', { name: 'The story starts here.' })).toBeVisible()
     expect((await page.request.get(`${origin}${prefix}favicon.svg`)).status()).toBe(200)
-    await expect(page.locator('.demo-banner')).toBeVisible()
+    await expect(page.locator('.local-label')).toHaveText('Sample data')
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
   }

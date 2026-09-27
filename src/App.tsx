@@ -1,6 +1,6 @@
 import {
   Activity, ArrowRight, ArrowUpRight, CalendarDays, Check, ChevronRight, Download,
-  FileText, Heart, LayoutDashboard, ListFilter, LockKeyhole, Printer, ShieldCheck, Sparkles, X,
+  FileText, Heart, LayoutDashboard, ListFilter, LockKeyhole, Printer, Settings as SettingsIcon, ShieldCheck, Sparkles, X,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { CareGuide, GuidancePreview } from './components/CareGuide'
@@ -10,12 +10,13 @@ import { PrintReport } from './components/PrintReport'
 import { ReportsPage } from './components/ReportsPage'
 import { ResultsExplorer } from './components/ResultsExplorer'
 import { MedicalNote } from './components/ui'
-import { DataControls } from './components/DataControls'
+import { Settings } from './components/Settings'
 import { ReportPicker } from './components/ReportPicker'
 import { HistoryOverview } from './components/HistoryOverview'
 import { AllReportsComparison } from './components/AllReportsComparison'
 import { useDataset } from './DatasetContext'
-import { collectionLabel } from './lib/history'
+import { collectionLabel, reportLabel } from './lib/history'
+import './compact-ui.css'
 import { createCsv, defaultFilters, filterMarkers } from './lib/results'
 import type { Filters, HistoryMarker, Marker, PageId, StatusFilter, TrendFilter, ViewMode } from './types'
 
@@ -33,7 +34,7 @@ function pageFromHash(): PageId {
 }
 
 const pageContent: Record<PageId, { eyebrow: string; title: string; description: string }> = {
-  overview: { eyebrow: 'WELCOME TO THE DEMO HEALTH JOURNAL', title: 'Your health, in perspective.', description: 'Explore fictional samples across collection dates. Choose any two to compare.' },
+  overview: { eyebrow: 'YOUR WELLNOTE HEALTH JOURNAL', title: 'Your health, in perspective.', description: 'Explore your history across collection dates. Compare any two samples in Biomarkers.' },
   biomarkers: { eyebrow: 'LESS JARGON. MORE UNDERSTANDING.', title: 'Meet your biomarkers.', description: 'Compare every measurement, find a pattern, and go a little deeper.' },
   comparison: { eyebrow: 'EVERY SAMPLE. EVERY SOURCE REFERENCE.', title: 'Compare the whole history.', description: 'All reports side by side, ordered by sample collection date. Each result keeps its own unit and reference.' },
   guide: { eyebrow: 'INFORMED CONVERSATIONS. SMALL, MEANINGFUL STEPS.', title: 'A thoughtful way forward.', description: 'Food, everyday habits and the right questions for your clinician.' },
@@ -46,7 +47,7 @@ export default function App() {
 }
 
 function Dashboard() {
-  const { markers, guidance, person, reports, isPersonal, allReports, pair, selectPair } = useDataset()
+  const { markers, guidance, person, reports, isPersonal, allReports, pair, selectPair, storageWarning } = useDataset()
   const daysBetweenReports = Math.round((Date.parse(reports.latest.date) - Date.parse(reports.earlier.date)) / 86_400_000)
   const [page, setPage] = useState<PageId>(pageFromHash)
   const [mode, setMode] = useState<ViewMode>('compare')
@@ -54,6 +55,7 @@ function Dashboard() {
   const [selected, setSelected] = useState<Marker | null>(null)
   const [guideTopic, setGuideTopic] = useState('all')
   const [toast, setToast] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const filtered = useMemo(() => filterMarkers(markers, filters, mode), [markers, filters, mode])
   const content = isPersonal && (page === 'overview' || page === 'reports')
     ? { ...pageContent[page], eyebrow: 'YOUR LOCALLY IMPORTED HEALTH JOURNAL', description: 'Your imported measurements, processed on this device. No original PDFs are attached.' }
@@ -67,7 +69,7 @@ function Dashboard() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
-    document.title = `Wellnote${isPersonal ? ' Local' : ' Demo'} | ${navigation.find((item) => item.id === page)?.label ?? 'Health journal'}`
+    document.title = `Wellnote | ${navigation.find((item) => item.id === page)?.label ?? 'Health journal'}`
   }, [page, isPersonal])
 
   useEffect(() => {
@@ -142,7 +144,6 @@ function Dashboard() {
         event.preventDefault()
         document.getElementById('main-content')?.focus()
       }}>Skip to content</a>
-      <div className="demo-banner" role="note"><strong>{isPersonal ? 'PERSONAL DATA · LOCAL TO THIS BROWSER' : 'PUBLIC DEMO · NOT A MEDICAL RECORD'}</strong><span>{isPersonal ? 'Imported locally, not uploaded. App flags are not a diagnosis or prescription.' : 'These sample readings, dates and references are fictional. Load your health data to see your own results.'}</span></div>
       <div className="app-shell">
         <aside className="sidebar">
           <button className="brand" onClick={() => navigate('overview')} aria-label="Wellnote home"><span className="brand-mark"><Activity size={24} strokeWidth={1.8} /></span><span>wellnote<span className="brand-period">.</span></span></button>
@@ -152,7 +153,7 @@ function Dashboard() {
           </nav>
           <div className="sidebar-timeline">
             <div className="sidebar-section-label">YOUR REPORT TIMELINE</div>
-            {allReports.map((report) => <button key={report.id} onClick={() => snapshot(report.id)} className={`timeline-entry ${report.id === pair[1] ? 'current-entry' : ''}`}><span className="timeline-dot" /><span><strong>{report.shortDate}</strong><small>{report.collectionDate ? `Collected ${report.collectionTime ?? ''}` : 'Collection date not supplied; legacy report date'}</small><small>{report.laboratory ?? report.id}</small></span></button>)}
+            {allReports.map((report) => <button key={report.id} onClick={() => snapshot(report.id)} aria-label={`Open snapshot ${reportLabel(report)}`} className={`timeline-entry ${report.id === pair[1] ? 'current-entry' : ''}`}><span className="timeline-dot" /><span><strong>{report.shortDate}</strong><small>{report.collectionDate ? `Collected ${report.collectionTime ?? ''}` : 'Collection date not supplied; legacy report date'}</small><small>{report.laboratory ?? report.id}</small></span></button>)}
             <div className="timeline-caption">{daysBetweenReports} days in selected pair</div>
           </div>
           <div className="sidebar-bottom">
@@ -163,15 +164,15 @@ function Dashboard() {
         <div className="main-shell">
           <header className="topbar">
             <div className="breadcrumbs"><span>My health</span><ChevronRight size={13} /><strong>{navigation.find((item) => item.id === page)?.label}</strong></div>
-            <div className="topbar-right"><span className="local-label"><span />{isPersonal ? 'Local import' : 'Public demo'}</span><div className="profile-divider" /><div className="profile-info"><strong>{person.name}</strong><span>{isPersonal ? 'Personal health journal' : 'Demo illustrations'}</span></div><div className="avatar" aria-label={person.name}>{person.initials}</div></div>
+            <div className="topbar-right"><span className="local-label" title={isPersonal ? 'Imported on this device, never uploaded' : 'Fictional sample readings, dates and references; not a medical record'}><span />{isPersonal ? 'Local import' : 'Sample data'}</span><div className="profile-divider" /><div className="profile-info"><strong>{person.name}</strong><span>{isPersonal ? 'Personal health journal' : 'Demo illustrations'}</span></div><div className="avatar" aria-label={person.name}>{person.initials}</div><button id="settings-trigger" className="button secondary-button settings-trigger" onClick={() => setSettingsOpen(true)} aria-haspopup="dialog"><SettingsIcon size={18} /><span>Settings</span></button></div>
           </header>
           <main id="main-content" tabIndex={-1}>
-            <DataControls />
-            {page !== 'comparison' && <ReportPicker onPair={changePair} onSnapshot={snapshot} />}
+            {storageWarning && <p className="import-error storage-warning" role="alert">{storageWarning} <button className="text-button" onClick={() => setSettingsOpen(true)}>Open Settings</button></p>}
             <section className="page-heading">
               <div><div className="eyebrow">{content.eyebrow}</div><h1>{content.title}</h1><p>{content.description}</p></div>
               {page !== 'comparison' && <div className="header-actions"><button className="icon-button print-button" aria-label="Print filtered report" title="Print filtered report" onClick={() => window.print()}><Printer size={18} /></button><button className="button primary-button export-button" disabled={filtered.length === 0} onClick={exportCsv}><Download size={16} /><span>Export comparison</span></button></div>}
             </section>
+            {page === 'biomarkers' && <ReportPicker onPair={changePair} />}
             {(page === 'overview' || page === 'biomarkers') && <>
               <section className="report-strip" aria-label="Report dates and viewing mode">
                 <div className="report-date-pair"><span className="date-icon"><CalendarDays size={19} /></span><div className="report-date"><small>SELECTED BEFORE</small><strong>{collectionLabel(reports.earlier)}</strong></div><span className="date-arrow"><ArrowRight size={17} /></span><div className="report-date latest-date"><small>SELECTED AFTER</small><strong>{collectionLabel(reports.latest)}</strong></div></div>
@@ -195,6 +196,7 @@ function Dashboard() {
       </div>
       {page !== 'comparison' && <PrintReport rows={filtered} mode={mode} />}
       {selected && <MarkerDetail marker={selected} onClose={() => setSelected(null)} onGuide={showGuide} />}
+      {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
       <div className="toast-container" role="status" aria-live="polite">{toast && <div className="toast"><Check size={18} /><span>{toast}</span><button className="icon-button" aria-label="Dismiss notification" onClick={() => setToast('')}><X size={15} /></button></div>}</div>
     </>
   )

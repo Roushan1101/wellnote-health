@@ -3,7 +3,7 @@ import { useDataset } from '../DatasetContext'
 import { demoDataset, MAX_DATASET_BYTES, parseDataset } from '../lib/dataset'
 
 export function DataControls() {
-  const { isPersonal, saved, loadDataset, clearData, storageWarning } = useDataset()
+  const { isPersonal, saved, loadDataset, clearData } = useDataset()
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -21,7 +21,7 @@ export function DataControls() {
   }
 
   return <section className="panel data-controls" aria-label="Local health data">
-    <div><h2>Use your own health journal</h2><p>Choose a portable Wellnote JSON file. It is read on this device, never uploaded. PDFs are not supported.</p></div>
+    <div><h3>Local health data</h3><p>Choose a portable Wellnote JSON file. It is read on this device, never uploaded. PDFs are not supported.</p></div>
     <label className="remember-choice"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} disabled={busy} />Remember the next import on this browser (unencrypted; shared devices are unsafe)</label>
     <div className="data-actions">
       <label className="button primary-button import-label">Load my health data<input aria-label="Load my health data" type="file" accept=".json,application/json" disabled={busy} onChange={async (event) => {
@@ -55,7 +55,7 @@ export function DataControls() {
     <p role="status">{busy ? 'Reading and validating locally…' : isPersonal
       ? saved ? 'Personal data is saved only in this browser. Clear it when finished.' : 'Personal data is in memory only. Reloading or closing this page restores the demo.'
       : 'Synthetic demo active. Remember is off by default; no personal data is bundled with this website.'}</p>
-    {(error || storageWarning) && <p className="import-error" role="alert">{error || storageWarning}</p>}
+    {error && <p className="import-error" role="alert">{error}</p>}
     <p className="data-safety">Local browser storage is not encrypted and other code on the same website origin may access it. Use a trusted browser and avoid shared devices. Clearing removes this app&apos;s saved copy, not your original file or downloads.</p>
   </section>
 }

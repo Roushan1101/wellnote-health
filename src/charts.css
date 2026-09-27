@@ -49,7 +49,7 @@
 .history-matrix caption { text-align: left; padding: 16px; font-size: 13px; max-width: 800px; }
 .history-matrix th, .history-matrix td { min-width: 220px; max-width: 260px; width: 250px; }
 .history-matrix tr > th:first-child { min-width: 180px; max-width: 200px; width: 190px; }
-.history-marker-button { text-align: left; background: transparent; padding: 0; color: var(--brand); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.history-marker-button { text-align: left; background: transparent; padding: 0; color: var(--ink); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .history-cell-reference { margin-top: 10px; font-size: 12px; }
 .history-cell-reference > span { font-weight: 600; }
 .history-cell-provenance { margin-top: 10px; font-size: 12px; }

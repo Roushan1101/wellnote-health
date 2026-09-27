@@ -2,14 +2,15 @@ import { expect, test } from '@playwright/test'
 import { demoDataset } from '../src/data/history'
 import { nutrientGuidance } from '../src/data/nutrient-guidance'
 import type { Dataset } from '../src/types'
+import { importJson, openSettings, closeSettings, selectPair } from './helpers'
 
 test('RK is the default display name without implying the samples are real', async ({ page }) => {
   await page.goto('./')
   await expect(page.locator('.profile-info')).toContainText('RK')
   await expect(page.locator('.avatar')).toHaveText('RK')
   await expect(page.locator('body')).not.toContainText('Alex Morgan')
-  await expect(page.locator('.demo-banner')).toContainText('PUBLIC DEMO')
-  await expect(page.locator('.demo-banner')).toContainText('fictional')
+  await expect(page.locator('.local-label')).toHaveText('Sample data')
+  await expect(page.locator('.local-label')).toHaveAttribute('title', /Fictional/)
 })
 
 test('low nutrient guidance has three foods and two alternatives, never replacement for a high result', async ({ page }) => {
@@ -23,9 +24,7 @@ test('low nutrient guidance has three foods and two alternatives, never replacem
     }])),
   }))
   await page.goto('./')
-  await page.getByLabel('Load my health data', { exact: true }).setInputFiles({
-    name: 'synthetic-nutrient-education.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(data)),
-  })
+  await importJson(page, data, 'synthetic-nutrient-education.json')
   await page.getByRole('navigation').getByRole('button', { name: /Your next steps/ }).click()
   await expect(page.locator('.medication-options')).toHaveCount(5)
   for (const plan of nutrientGuidance) {
@@ -35,7 +34,8 @@ test('low nutrient guidance has three foods and two alternatives, never replacem
     await expect(card.locator('.medication-options')).toContainText('not a confirmed deficiency')
     await expect(card.locator('.medication-options')).toContainText('alternatives')
   }
-  await page.getByRole('combobox', { name: 'After report', exact: true }).selectOption(data.reports[1]!.id)
+  await selectPair(page, undefined, data.reports[1]!.id)
+  await page.getByRole('navigation').getByRole('button', { name: /Your next steps/ }).click()
   await expect(page.locator('.medication-options')).toHaveCount(0)
   await expect(page.locator('.guide-intro')).toContainText('Historical selection')
   await expect(page.locator('.guidance-list')).not.toContainText('Ferrous sulfate')
@@ -47,7 +47,11 @@ for (const width of [320, 390, 720]) {
   test(`mobile ${width}px has readable text and usable touch targets without page overflow`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
     await page.goto('./')
-    for (const selector of ['.data-controls p', '.report-picker p', '.search-field input', '.marker-name-button strong']) {
+    await openSettings(page)
+    expect(await page.locator('.data-controls p').first().evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16)
+    await closeSettings(page)
+    await selectPair(page)
+    for (const selector of ['.report-picker p', '.search-field input', '.marker-name-button strong']) {
       expect(await page.locator(selector).first().evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16)
     }
     for (const selector of ['.eyebrow', '.results-note', '.results-meta', '.marker-name-button small', '.status-badge']) {

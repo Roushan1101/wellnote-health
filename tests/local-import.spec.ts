@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { importJson, openSettings, closeSettings } from './helpers'
 import { demoDataset } from '../src/lib/dataset'
 import { markers } from '../src/data/markers'
 import { person, reports } from '../src/data/reports'
@@ -28,23 +29,20 @@ function importedFixture(): LegacyDataset {
   return data
 }
 
-async function importJson(page: Page, value: unknown, name = 'fictional-import.json') {
-  await page.getByLabel('Load my health data', { exact: true }).setInputFiles({
-    name, mimeType: 'application/json', buffer: Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)),
-  })
-}
-
 test.beforeEach(async ({ page }) => { await page.goto('./') })
 
 test('memory-only import updates every view without requests or persistence', async ({ page }) => {
+  await openSettings(page)
   await expect(page.getByRole('checkbox', { name: /Remember the next import/ })).not.toBeChecked()
   await page.waitForLoadState('networkidle')
   const requests: string[] = []
   page.on('request', (request) => requests.push(request.url()))
   await importJson(page, importedFixture())
   await expect(page.locator('.profile-info')).toContainText('Taylor Example')
-  await expect(page.locator('.demo-banner')).toContainText('PERSONAL DATA')
+  await expect(page.locator('.local-label')).toHaveText('Local import')
+  await openSettings(page)
   await expect(page.locator('.data-controls')).toContainText('memory only')
+  await closeSettings(page)
   await expect(page.locator('.results-meta')).toContainText('26 of 26')
   await expect(page.locator('.report-date-pair')).toContainText('9 Mar 2021')
   await expect(page.locator('.priority-card')).not.toContainText('Below')
@@ -60,15 +58,18 @@ test('memory-only import updates every view without requests or persistence', as
   expect(requests).toEqual([])
   await page.reload()
   await expect(page.locator('.profile-info')).toContainText('RK')
-  await expect(page.locator('.demo-banner')).toContainText('PUBLIC DEMO')
+  await expect(page.locator('.local-label')).toHaveText('Sample data')
 })
 
 test('remember requires explicit consent and clear removes saved data', async ({ page }) => {
+  await openSettings(page)
   await page.getByRole('checkbox', { name: /Remember the next import/ }).check()
   await importJson(page, importedFixture())
+  await openSettings(page)
   await expect(page.locator('.data-controls')).toContainText('saved only in this browser')
   await page.reload()
   await expect(page.locator('.profile-info')).toContainText('Taylor Example')
+  await openSettings(page)
   await page.getByRole('button', { name: 'Clear personal data / return to demo' }).click()
   await expect(page.locator('.profile-info')).toContainText('RK')
   expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('wellnote-local-dataset:')))).toEqual([])
@@ -77,11 +78,14 @@ test('remember requires explicit consent and clear removes saved data', async ({
 })
 
 test('loading without remember also removes a previously saved dataset', async ({ page }) => {
+  await openSettings(page)
   await page.getByRole('checkbox', { name: /Remember the next import/ }).check()
   await importJson(page, importedFixture())
+  await openSettings(page)
   await expect(page.locator('.data-controls')).toContainText('saved only in this browser')
   await expect(page.getByRole('checkbox', { name: /Remember the next import/ })).not.toBeChecked()
   await importJson(page, importedFixture())
+  await openSettings(page)
   await expect(page.locator('.data-controls')).toContainText('memory only')
   await page.reload()
   await expect(page.locator('.profile-info')).toContainText('RK')
@@ -152,12 +156,14 @@ test('invalid saved data fails closed to demo with recovery advice', async ({ pa
   await page.reload()
   await expect(page.locator('.profile-info')).toContainText('RK')
   await expect(page.getByRole('alert')).toContainText('Saved browser data could not be loaded')
+  await openSettings(page)
   await page.getByRole('button', { name: 'Clear personal data / return to demo' }).click()
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
 
 test('storage failures are explained and memory-only import remains available', async ({ page }) => {
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException('Storage unavailable', 'QuotaExceededError') } })
+  await openSettings(page)
   await page.getByRole('checkbox', { name: /Remember the next import/ }).check()
   await importJson(page, importedFixture())
   await expect(page.getByRole('alert')).toContainText('Browser storage could not be updated')
@@ -165,11 +171,13 @@ test('storage failures are explained and memory-only import remains available', 
   await page.getByRole('checkbox', { name: /Remember the next import/ }).uncheck()
   await importJson(page, importedFixture())
   await expect(page.locator('.profile-info')).toContainText('Taylor Example')
+  await openSettings(page)
   await expect(page.locator('.data-controls')).toContainText('memory only')
 })
 
 test('template download always contains only synthetic defaults, even after personal import', async ({ page }) => {
   await importJson(page, importedFixture())
+  await openSettings(page)
   const pending = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download JSON template' }).click()
   const stream = await (await pending).createReadStream()
