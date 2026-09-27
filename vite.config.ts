@@ -1,9 +1,12 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
+import { localDataPlugin } from './dev/local-data'
 
 export default defineConfig({
   plugins: [
     react(),
+    localDataPlugin(fileURLToPath(new URL('../wellnote-personal-data.json', import.meta.url))),
     {
       name: 'production-local-data-csp',
       apply: 'build',
@@ -35,6 +38,6 @@ export default defineConfig({
   build: { assetsInlineLimit: 0 },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'dev/**/*.test.ts'],
   },
 })

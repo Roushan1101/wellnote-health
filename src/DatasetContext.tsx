@@ -13,9 +13,11 @@ interface DatasetState {
   revision: number
   storageWarning: string
   pair: [string, string]
+  fromLocalFile: boolean
 }
 
 interface DatasetContextValue extends DatasetState {
+  localFileAvailable: boolean
   person: Person
   reports: PairReports
   allReports: HistoryReport[]
@@ -31,8 +33,12 @@ interface DatasetContextValue extends DatasetState {
 
 const DatasetContext = createContext<DatasetContextValue | null>(null)
 
-function initialState(): DatasetState {
-  const state = { dataset: demoDataset, isPersonal: false, saved: false, revision: 0, storageWarning: '', pair: defaultPair(demoDataset) }
+function initialState(localDataset?: Dataset): DatasetState {
+  const state = { dataset: demoDataset, isPersonal: false, saved: false, revision: 0, storageWarning: '', pair: defaultPair(demoDataset), fromLocalFile: false }
+  if (localDataset) {
+    const dataset = validateDataset(localDataset)
+    return { ...state, dataset, pair: defaultPair(dataset), isPersonal: true, fromLocalFile: true }
+  }
   try {
     const saved = localStorage.getItem(storageKey())
     if (saved) {
@@ -45,15 +51,15 @@ function initialState(): DatasetState {
   return state
 }
 
-export function DatasetProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<DatasetState>(initialState)
+export function DatasetProvider({ children, localDataset }: { children: ReactNode; localDataset?: Dataset }) {
+  const [state, setState] = useState<DatasetState>(() => initialState(localDataset))
   const value = useMemo<DatasetContextValue>(() => {
     const projected = projectDataset(state.dataset, ...state.pair)
     const findMarker = (id: string) => projected.markers.find((item) => item.id === id)
     const historical = projected.reports.latest.id !== state.dataset.reports.at(-1)!.id
     const guidance = buildGuidance(projected.markers, projected.reports.latest, historical)
     return {
-      ...state, ...projected, person: state.dataset.person, allReports: state.dataset.reports, historical, guidance, findMarker,
+      ...state, ...projected, localFileAvailable: localDataset !== undefined, person: state.dataset.person, allReports: state.dataset.reports, historical, guidance, findMarker,
       selectPair(first, second) {
         const { pair } = projectDataset(state.dataset, first, second)
         setState((current) => ({ ...current, pair }))
@@ -66,15 +72,15 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
         } catch {
           if (remember || state.saved) throw new Error('Browser storage could not be updated. Disable “Remember” for memory-only use, or clear this site’s storage in browser settings first.')
         }
-        setState((current) => ({ dataset: validated, pair: defaultPair(validated), isPersonal: true, saved: remember, revision: current.revision + 1, storageWarning: '' }))
+        setState((current) => ({ dataset: validated, pair: defaultPair(validated), isPersonal: true, saved: remember, revision: current.revision + 1, storageWarning: '', fromLocalFile: false }))
       },
       clearData() {
         let warning = ''
         try { localStorage.removeItem(storageKey()) } catch { warning = 'Memory cleared, but browser storage could not be removed. Clear this site’s storage in browser settings before reloading.' }
-        setState((current) => ({ dataset: demoDataset, pair: defaultPair(demoDataset), isPersonal: false, saved: false, revision: current.revision + 1, storageWarning: warning }))
+        setState((current) => ({ dataset: demoDataset, pair: defaultPair(demoDataset), isPersonal: false, saved: false, revision: current.revision + 1, storageWarning: warning, fromLocalFile: false }))
       },
     }
-  }, [state])
+  }, [state, localDataset])
   return <DatasetContext.Provider value={value}>{children}</DatasetContext.Provider>
 }
 

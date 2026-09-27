@@ -143,6 +143,14 @@ npm run test:e2e
 
 The production preview uses loopback. Browser tests start their own preview on port 5196 and use only fictional fixtures. Coverage includes all six demo pairs, sparse inputs, collection/report dates, same-day laboratories, unit mismatch safety, normalization provenance, legacy migration/storage, exports, print, keyboard/mobile controls and CSP.
 
+### Optional private local-development data
+
+When running the development server, a `wellnote-personal-data.json` file in the **parent folder, outside this repository**, is validated and loaded automatically. The profile indicator says **Local file**. This startup dataset takes precedence over remembered browser data, and each refresh uses the latest file. File changes trigger a full reload. No localStorage consent is assumed and nothing is automatically saved or removed from browser storage.
+
+This is a development-only convenience for a private workstation, not a hosted import API. Keep the server bound to loopback. The file is read only when generating development HTML; the plugin does not run in production builds and does not attach data to previews or GitHub Pages. Missing files leave the normal demo/import flow intact. Invalid files fail explicitly instead of showing unrelated sample dates. The embedded JSON is validated and escaped as inert application/json text.
+
+Settings still supports manual imports and clearing to the demo for the current page. If the parent file exists, a refresh restores it; the Settings status explains this distinction. On a hosted production site, the existing explicit-import, Remember and Clear behavior is unchanged.
+
 ## GitHub Pages
 
 Publish **only this folder's contents as the repository root**, never its parent. Keep personal JSON exports, PDFs, environment files and credentials out of the repository.

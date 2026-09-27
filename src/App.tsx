@@ -47,7 +47,7 @@ export default function App() {
 }
 
 function Dashboard() {
-  const { markers, guidance, person, reports, isPersonal, allReports, pair, selectPair, storageWarning } = useDataset()
+  const { markers, guidance, person, reports, isPersonal, fromLocalFile, allReports, pair, selectPair, storageWarning } = useDataset()
   const daysBetweenReports = Math.round((Date.parse(reports.latest.date) - Date.parse(reports.earlier.date)) / 86_400_000)
   const [page, setPage] = useState<PageId>(pageFromHash)
   const [mode, setMode] = useState<ViewMode>('compare')
@@ -164,7 +164,7 @@ function Dashboard() {
         <div className="main-shell">
           <header className="topbar">
             <div className="breadcrumbs"><span>My health</span><ChevronRight size={13} /><strong>{navigation.find((item) => item.id === page)?.label}</strong></div>
-            <div className="topbar-right"><span className="local-label" title={isPersonal ? 'Imported on this device, never uploaded' : 'Fictional sample readings, dates and references; not a medical record'}><span />{isPersonal ? 'Local import' : 'Sample data'}</span><div className="profile-divider" /><div className="profile-info"><strong>{person.name}</strong><span>{isPersonal ? 'Personal health journal' : 'Demo illustrations'}</span></div><div className="avatar" aria-label={person.name}>{person.initials}</div><button id="settings-trigger" className="button secondary-button settings-trigger" onClick={() => setSettingsOpen(true)} aria-haspopup="dialog"><SettingsIcon size={18} /><span>Settings</span></button></div>
+            <div className="topbar-right"><span className="local-label" title={fromLocalFile ? 'Loaded from your private file by the local development server, never uploaded' : isPersonal ? 'Imported on this device, never uploaded' : 'Fictional sample readings, dates and references; not a medical record'}><span />{fromLocalFile ? 'Local file' : isPersonal ? 'Local import' : 'Sample data'}</span><div className="profile-divider" /><div className="profile-info"><strong>{person.name}</strong><span>{isPersonal ? 'Personal health journal' : 'Demo illustrations'}</span></div><div className="avatar" aria-label={person.name}>{person.initials}</div><button id="settings-trigger" className="button secondary-button settings-trigger" onClick={() => setSettingsOpen(true)} aria-haspopup="dialog"><SettingsIcon size={18} /><span>Settings</span></button></div>
           </header>
           <main id="main-content" tabIndex={-1}>
             {storageWarning && <p className="import-error storage-warning" role="alert">{storageWarning} <button className="text-button" onClick={() => setSettingsOpen(true)}>Open Settings</button></p>}

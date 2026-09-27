@@ -3,7 +3,7 @@ import { useDataset } from '../DatasetContext'
 import { demoDataset, MAX_DATASET_BYTES, parseDataset } from '../lib/dataset'
 
 export function DataControls() {
-  const { isPersonal, saved, loadDataset, clearData } = useDataset()
+  const { isPersonal, saved, fromLocalFile, localFileAvailable, loadDataset, clearData } = useDataset()
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -52,9 +52,14 @@ export function DataControls() {
         clearData()
       }}>Clear personal data / return to demo</button>
     </div>
-    <p role="status">{busy ? 'Reading and validating locally…' : isPersonal
-      ? saved ? 'Personal data is saved only in this browser. Clear it when finished.' : 'Personal data is in memory only. Reloading or closing this page restores the demo.'
+    <p role="status">{busy ? 'Reading and validating locally…' : fromLocalFile
+      ? 'Your private report file is loaded automatically by this local development server. Refreshing reloads its latest data and dates; no browser storage is needed.'
+      : isPersonal
+      ? saved ? 'Personal data is saved only in this browser. Clear it when finished.' : localFileAvailable
+        ? 'This import is in memory only. Refreshing reloads the private report file from this local development server.'
+        : 'Personal data is in memory only. Reloading or closing this page restores the demo.'
       : 'Synthetic demo active. Remember is off by default; no personal data is bundled with this website.'}</p>
+    {localFileAvailable && !fromLocalFile && <p>Refreshing this local development app reloads the private report file, instead of demo or remembered data. Clearing browser data does not delete that file.</p>}
     {error && <p className="import-error" role="alert">{error}</p>}
     <p className="data-safety">Local browser storage is not encrypted and other code on the same website origin may access it. Use a trusted browser and avoid shared devices. Clearing removes this app&apos;s saved copy, not your original file or downloads.</p>
   </section>
