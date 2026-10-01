@@ -33,6 +33,25 @@ describe('private local development startup', () => {
     expect(html).not.toContain('id="wellnote-local-data"')
   })
 
+  it('allows a network-bound demo when no private file exists', async () => {
+    server.config.server.host = '0.0.0.0'
+    const html = await server.transformIndexHtml('/', '<html><head></head><body></body></html>')
+    expect(html).not.toContain('id="wellnote-local-data"')
+  })
+
+  it.each([true, '0.0.0.0', '::', '192.168.1.10'])('rejects private data added after startup on non-loopback host %s', async (host) => {
+    server.config.server.host = host
+    writeFileSync(filename, JSON.stringify(demoDataset), 'utf8')
+    await expect(server.transformIndexHtml('/', '<html><head></head><body></body></html>')).rejects.toThrow('--host 127.0.0.1')
+  })
+
+  it.each(['127.0.0.1', 'localhost', '::1'])('loads private history on loopback host %s', async (host) => {
+    server.config.server.host = host
+    writeFileSync(filename, JSON.stringify(demoDataset), 'utf8')
+    const html = await server.transformIndexHtml('/', '<html><head></head><body></body></html>')
+    expect(html).toContain('id="wellnote-local-data"')
+  })
+
   it('validates private dates and regenerates stale display labels on every page load', async () => {
     const dataset = structuredClone(demoDataset)
     dataset.reports[0]!.date = dataset.reports[0]!.collectionDate = '2024-01-12'

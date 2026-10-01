@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { localDataPlugin } from './dev/local-data'
 
 export default defineConfig({
+  root: fileURLToPath(new URL('.', import.meta.url)),
   plugins: [
     react(),
     localDataPlugin(fileURLToPath(new URL('../wellnote-personal-data.json', import.meta.url))),

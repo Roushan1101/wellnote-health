@@ -2,6 +2,9 @@ import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const distDirectory = fileURLToPath(new URL('../dist', import.meta.url))
 
 test.beforeEach(async ({ page }) => { await page.goto('./') })
 
@@ -137,7 +140,7 @@ test('mobile layout stays within viewport with a visible demo notice', async ({ 
 })
 
 test('production document uses relative assets for repository hosting', async () => {
-  const html = await readFile('dist/index.html', 'utf8')
+  const html = await readFile(join(distDirectory, 'index.html'), 'utf8')
   expect(html).toContain('href="./favicon.svg"')
   expect(html).toMatch(/src="\.\/assets\//)
   expect(html).not.toMatch(/(?:src|href)="\/assets\//)
@@ -153,7 +156,7 @@ test('production app loads and reloads below a repository subpath', async ({ pag
       response.writeHead(404).end(); return
     }
     try {
-      const content = await readFile(join('dist', ...relative.split('/')))
+      const content = await readFile(join(distDirectory, ...relative.split('/')))
       const type = relative.endsWith('.js') ? 'text/javascript'
         : relative.endsWith('.css') ? 'text/css'
           : relative.endsWith('.svg') ? 'image/svg+xml'

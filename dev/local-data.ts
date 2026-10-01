@@ -19,6 +19,10 @@ export function localDataPlugin(filename: string): Plugin {
     },
     transformIndexHtml(_html, context) {
       if (!context.server || !existsSync(filename)) return []
+      const host = context.server.config.server.host
+      if (host === true || (typeof host === 'string' && !['127.0.0.1', 'localhost', '::1'].includes(host))) {
+        throw new Error('Private health data requires a loopback-only development server. Restart with --host 127.0.0.1 instead of sharing the server on your network.')
+      }
       const dataset = parseDataset(readFileSync(filename, 'utf8'))
       return [{
         tag: 'script',
